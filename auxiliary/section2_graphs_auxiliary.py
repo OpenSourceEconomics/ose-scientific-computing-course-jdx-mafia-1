@@ -1,33 +1,57 @@
-# PLOTS FROM SECTION 2: The Economic Costs of Organised Crime, Pinotti (2015)
+""" Auxiliary code with functions for plotting static graphs in section 2 of the main notebook """
+
+import numpy as np
+import pandas as pd
+import cvxpy as cp
+import numpy.linalg as LA
+import statsmodels.api as sm
+import plotly.graph_objs as go
+import matplotlib.pyplot as plt
+import scipy.optimize as optimize
+import statsmodels.formula.api as smf
+from joblib import Parallel, delayed
+from scipy.optimize import differential_evolution, NonlinearConstraint, Bounds
+
+
+%matplotlib inline
+%config InlineBackend.figure_format = 'svg'
+#plt.rcParams['figure.figsize'] = [5.5, 3.5]
+plt.rcParams['figure.figsize'] = [6, 4.0]
+#plt.rcParams['figure.dpi'] = 80
+
+
+dtafile = './dataset/Pinotti-replication/dataset.dta'
+data = pd.read_stata(dtafile)
+
+
+
 
 def dataframes():  
-        
+    """ Define necesary dataframes for future plots """
+    
     df1 = data[data['year'] >= 1983]
-    df2 = df1.groupby(['region', 'reg'])[['gdppercap', 'mafia', 'murd', 'ext', 'fire', 'kidnap', 'rob', 'smug',
-                                      'drug', 'theft', 'orgcrime']].mean()
+    
+    df2 = df1.groupby(['region', 'reg'])[['gdppercap', 'mafia', 'murd', 'ext', 'fire', 'kidnap', 'rob', 'smug', 'drug', 'theft', 'orgcrime']].mean()
     df2 = df2.reset_index()
-
     grouped = (data['reg'] > 20) & (data['reg'] < 25)
 
     df3 = data.loc[grouped, ['murd', 'year', 'region']]
     df3 = df3[df3['year'] >= 1956]
     df3 = df3[['murd', 'year', 'region']]
     df3 = df3.pivot(index = 'year', columns = 'region', values = 'murd')
-
     # rename df3 columns for a nice looking legend
     df3 = df3.rename(columns = {'HIS':'Sicily, Campania, Calabria', 'NEW':'Apulia, Basilicata',
                             'NTH':'Centre-North', 'STH':'Rest of South'})
-    color = np.where((df2['reg'] == 15) | (df2['reg'] == 18) | (df2['reg'] == 19), 'midnightblue',       # EXCLUDED
-                 np.where((df2['reg'] == 16) | (df2['reg'] == 17), 'mediumslateblue',                    # TREATED
-                 np.where((df2['reg'] <= 12) | (df2['reg'] == 20), 'salmon', 'none')))                   # THE REST
+    color = np.where((df2['reg'] == 15) | (df2['reg'] == 18) | (df2['reg'] == 19), 'midnightblue',           # EXCLUDED
+                     np.where((df2['reg'] == 16) | (df2['reg'] == 17), 'mediumslateblue',                    # TREATED
+                     np.where((df2['reg'] <= 12) | (df2['reg'] == 20), 'salmon', 'none')))                   # THE REST
 
 
 
 
 
 def mafia_presence_avg():
-    
-    ### Figure 2.1: GDP per capita and mafia presence, 1983–2007 average ###
+    """ Plots Figure 2.1: GDP per capita and mafia presence, 1983–2007 average """
     
     df2.plot.scatter('mafia', 'gdppercap', c = color, s = 10, linewidth = 3, 
                  xlabel = 'Presence of mafia organisations', ylabel = 'GDP per capita', ylim = [7000,15000], xlim = [0,2.25],
@@ -42,9 +66,8 @@ def mafia_presence_avg():
 
 
 def murder_rate_graphs():
-    
-    ### Figure 2.2: Murder rate time series plot 1956-2007 and  ###
-    ### Figure 2.3: Organized Crime and Averge Murder 1983-2007 ###
+    """ Plots Figure 2.2: Murder rate time series plot 1956-2007 
+    and Figure 2.3: Organized Crime and Averge Murder 1983-2007 """
     
     figure, axes = plt.subplots(1, 2,figsize=(10,5))
 

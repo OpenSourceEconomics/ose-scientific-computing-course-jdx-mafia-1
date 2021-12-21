@@ -1,4 +1,34 @@
+""" Auxiliary code for section 4 of the main notebook.
+
+    Contents include functions for:
+        - robustness and sensitivity checks plots
+        - 
+        - """
+
+
+import numpy as np
+import pandas as pd
+import cvxpy as cp
+import numpy.linalg as LA
+import statsmodels.api as sm
+import plotly.graph_objs as go
+import matplotlib.pyplot as plt
+import scipy.optimize as optimize
+import statsmodels.formula.api as smf
+from joblib import Parallel, delayed
+from scipy.optimize import differential_evolution, NonlinearConstraint, Bounds
+
+
+%matplotlib inline
+%config InlineBackend.figure_format = 'svg'
+#plt.rcParams['figure.figsize'] = [5.5, 3.5]
+plt.rcParams['figure.figsize'] = [6, 4.0]
+#plt.rcParams['figure.dpi'] = 80
+
+
+
 def plots_prep():
+    """ Function to define the function to generate multiple figures and set the basic parameters """
     
     ## GDP MURDER FUNCTION TO CREATE PLOTS
     def gdp_murder_plotter(data,treat_unit,control_units,region_weights,title1,ax1):
@@ -53,8 +83,8 @@ def plots_prep():
     
 
 def multiplot():
-    
-    # Plots graphs in 3x3 format
+    """ Generates multiple plots in a 3x3 format """
+
     fig, fig_axes = plt.subplots(ncols=3, nrows=3,figsize=(10,10))
 
     

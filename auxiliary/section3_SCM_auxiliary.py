@@ -1,7 +1,36 @@
+""" Auxiliary code for section 3 of the main notebook.
+
+    Contents include functions for:
+        - data preparation
+        - dynamic graphs
+        - optimization with CVXPY and scipy 
+        - dataframes for RMSPE and outputs """
+
+
+import numpy as np
+import pandas as pd
+import cvxpy as cp
+import numpy.linalg as LA
+import statsmodels.api as sm
+import plotly.graph_objs as go
+import matplotlib.pyplot as plt
+import scipy.optimize as optimize
+import statsmodels.formula.api as smf
+from joblib import Parallel, delayed
+from scipy.optimize import differential_evolution, NonlinearConstraint, Bounds
+
+
+%matplotlib inline
+%config InlineBackend.figure_format = 'svg'
+#plt.rcParams['figure.figsize'] = [5.5, 3.5]
+plt.rcParams['figure.figsize'] = [6, 4.0]
+#plt.rcParams['figure.dpi'] = 80
+
+
+
 def data_prep():
-    
-    # Specify conditions for treated unit and control units as per Pinotti's paper (c.f. F216), 
-    # 21 is "NEW" Recent mafia presence: Apulia and Basilicata
+    """ Specify conditions for treated unit and control units as per Pinotti's paper (c.f. F216), 
+        where 21 are regions "NEW" with recent mafia presence: Apulia and Basilicata """
 
     treat_unit     = data[data.reg == 21]
     treat_unit     = treat_unit[treat_unit.year <= 1960]                 # Matching period: 1951 to 1960
@@ -11,8 +40,7 @@ def data_prep():
     control_units     = control_units[control_units.year <= 1960]
     control_units_all = data[(data.reg <= 14) | (data.reg ==20)]
 
-    # Extract the outcome variable for treatment and control unit, y: GDP per capita
-
+    
     y_treat     = np.array(treat_unit.gdppercap).reshape(1, 10)              # Matching period: 1951 to 1960
     y_treat_all = np.array(treat_unit_all.gdppercap).reshape(1, 57)          # Entire period:   1951 to 2007
 
@@ -22,7 +50,7 @@ def data_prep():
     Z1 = y_treat.T
     Z0 = y_control.T
 
-    ## Prepare matrices with only the relevant variables into CVXPY format, predictors k = 8
+    # Prepare matrices with only the relevant variables into CVXPY format, predictors k = 8
     predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
     X = data.loc[data['year'].isin(list(range(1951, 1961)))]
     X.index = X.loc[:,'reg']
@@ -42,14 +70,12 @@ def data_prep():
 
     
 
-def cvxpy_solution():
-    
-    # CVXPY Setup: Define function to call and output a vector of weights function
+def cvxpy_basic_solution():
+    """Initial simple CVXPY setup: Defines function to call and output a vector of weights function """
     
     data_prep()
     
     def w_optimize(v=None):
-    
         V = np.zeros(shape=(8, 8))
         if v is None:
             np.fill_diagonal(V, [1/8]*8)
@@ -80,7 +106,8 @@ def cvxpy_solution():
 
 def dynamic_graph_1():
     
-    ### Figure 3.1: Synthetic Control Optimizer vs. Treated unit ###
+    """ Plots Figure 3.1: Synthetic Control Optimizer vs. Treated unit 
+        for CVXPY initial optimizer, Pinotti, Becker and Klößner against the treated unit outcomes """
 
     w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
     w_becker = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4303541, 0.4893414, 0.0803045]).reshape(15,1)
@@ -120,7 +147,6 @@ def dynamic_graph_1():
     fig.update_layout(title='Figure 3.1: Synthetic Control Optimizer vs. Treated unit',
                    xaxis_title='Time', yaxis_title='GDP per Capita')
 
-    # Dynamic graph
     fig.show()
 
     
@@ -129,8 +155,10 @@ def dynamic_graph_1():
     
 
 def RMSPE_compare_1():
+    """ Defines function for Root Mean Squared Prediction Error (RMSPE)
+        and generates dataframe for RMSPE values comparison between CVXPY output, Pinotti, Becker """
     
-    # Function to obtain Root Mean Squared Prediction Error (RMSPE)
+    # Function to obtain RMSPE
     def RMSPE(w):
         return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
     
@@ -146,7 +174,7 @@ def RMSPE_compare_1():
     
 
 def table_predicted_actual():
-    # Dataframe to show predicted vs actual values of variables
+    """ Dataframe to show predicted vs. actual values of variables """
     
     x_pred_pinotti = (X0 @ w_pinotti)
     x_pred_basic = (X0 @ w_basic)
@@ -172,17 +200,13 @@ def table_predicted_actual():
 ##   CVXPY implementation   ##
 ##############################
 
-def CVXPY_basic_weights():
+def CVXPY_iterative():
+    """ CVXPY iterative implementation 
+        Approach 1: Iterating over the solution set by generating  𝑉  from a Dirichlet distribution"""
 
-    n = 100000            # Number of iterations: set to 100000
-
+    n = 100000
     iteration_2 = []
 
-    # Function to run in parallel 
-        ## use Parallel() to save time
-        ## n_jobs=-1 -> all CPU used
-        ## delayed(f)(x) for x in list(range(1,n+1))  -> computes function f in parallel, for var x from 1 to n+1
-    
     def f(x):
         np.random.seed(x)
         v_diag  = np.random.dirichlet(np.ones(8), size=1)
@@ -193,7 +217,10 @@ def CVXPY_basic_weights():
         return output_vec
     
     iteration_2 = Parallel(n_jobs=-1)(delayed(f)(x) for x in list(range(1,n+1)))
-
+    # Function to run in parallel 
+        ## use Parallel() to save time
+        ## n_jobs=-1 -> all CPU used
+        ## delayed(f)(x) for x in list(range(1,n+1))  -> computes function f in parallel, for var x from 1 to n+1
     
     # Organize output into dataframe
     solution_frame_2 = pd.DataFrame(iteration_2)
@@ -223,6 +250,8 @@ def CVXPY_basic_weights():
 ##############################
 
 def scipy_weights():
+    """ scipy implementation """
+    
     A = X0
     b = X1.ravel()  ## .ravel() returns continuous flattened array [[a,b],[c,d]]->[a,b,c,d]
     iteration_3 = []
@@ -277,8 +306,9 @@ def scipy_weights():
     
 
 def dynamic_graph_2():
+    """ Dynamic plot for Figure 3.2: Synthetic Control Optimizer vs. Treated unit
+        Plots iterative CVXPY, scipy, Pinotti and Becker versus treated unit outcome """
     
-    ### Figure 3.2: Synthetic Control Optimizer vs. Treated unit ### 
     y_synth_scipy = w_scipy.T @ y_control_all
     y_synth_cvxpy = w_cvxpy.T @ y_control_all
     
@@ -307,6 +337,8 @@ def dynamic_graph_2():
     
     
 def RMSPE_compare2():
+    """ Defines function for Root Mean Squared Prediction Error (RMSPE)
+        and generates dataframe for RMSPE values comparison between iterative CVXPY output, scipy and Pinotti """
     
     # Function to obtain Root Mean Squared Prediction Error (RMSPE)
     def RMSPE(w):
@@ -327,8 +359,7 @@ def RMSPE_compare2():
     
     
 def nested_data_prep():
-    
-    # Data preparation to proceed with nested optimization
+    """ Data preparation to proceed with nested optimization """
     
     def data_prep(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
                   predictor_variables):
@@ -356,7 +387,11 @@ def nested_data_prep():
 ##   CVXPY CODE, SETTINGS AND OUTPUT VISUALIZATION   ##
 #######################################################
     
-def CVXPY_SCM():
+def CVXPY_nested():
+    """ Approach 2: Nested Optimization: Combination of outer optimization ( 𝑊∗(𝑉) ) via Differential Evolution 
+        and inner optimization  (𝑊)  via CVXPY convex minimization """
+    
+    nested_data_prep()
     
     ## CVXPY ##
     def SCM(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
@@ -462,7 +497,7 @@ def CVXPY_SCM():
 
 
 def global_optimum():
-    # Checks feasibility of unconstrained solution: unrestricted outer optimum 
+    """ Checks feasibility of unconstrained solution: unrestricted outer optimum """
     
     W = cp.Variable((15, 1), nonneg=True)
     objective_function    = cp.Minimize(np.mean(cp.norm(Z1 - Z0 @ W)))
@@ -490,7 +525,8 @@ def global_optimum():
 
 
 def dynamic_graph_3():
-    # Figure 3.3: Synthetic Control Optimizer vs. Treated unit
+    """ Dynamic plot of Figure 3.3: Synthetic Control Optimizer vs. Treated unit 
+        Plots nested CVXPY optimizer, Pinotti, Becker and Klößner versus treated unit outcome """
     
     y_synth_becker = w_becker.T @ y_control_all
     y_synth_nested = w_nested.T @ y_control_all
@@ -521,7 +557,7 @@ def dynamic_graph_3():
 
 
 def matching_characteristics_table():
-    # Matching Period Characteristics: Apulia and Basilicata, Synthetic Control, Control Units
+    """ Dataframe with matching period characteristics for Apulia and Basilicata, Synthetic Control, Control Units """
     
     v_pinotti = [0.006141563, 0.464413137, 0.006141563, 0.013106925, 0.006141563, 0.033500548, 0.006141563, 0.464413137]
 
@@ -546,7 +582,9 @@ def matching_characteristics_table():
 
 
 def diff_figure_4():
-    # Figure 3.4: Actual vs Synthetic Differences over time: GDP per capita and Murders
+    """ Generates Figure 3.4: Actual vs Synthetic Differences over time: GDP per capita and Murders 
+        Shows differences in evolution of murder rates and GDP per capita between the actual realizations of Apulia 
+        and Basilicata and the ones predicted by the synthetic control unit """
     
     murd_treat_all      = np.array(treat_unit_all.murd).reshape(1, 57)
     murd_control_all    = np.array(control_units_all.murd).reshape(15, 57)
