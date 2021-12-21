@@ -1,0 +1,41 @@
+-------------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\Users\Pinotti\Dropbox\mafia\data\filesforEJ\results\Table1.log
+  log type:  text
+ opened on:  13 Aug 2014, 17:36:27
+
+. * first 2 columns
+. mat list e(X_balance)
+
+e(X_balance)[8,2]
+             Treated  Synthetic
+gdppercap  2394.9956  2402.9038
+  invrate  .31629604  .23200483
+   shvain  .21547881  .22146393
+   shvaag  .15170218  .15442495
+   shvams  .40166542   .3913636
+  shvanms  .23115355  .23274752
+  shskill  .16548637  .18080704
+  density  134.77887  105.62738
+
+. * last 4 columns
+. tabstat gdppercap invrate shvain shvaag shvams shvanms shskill density if year<=1960&(reg<15|reg==20), c(s) st(me sd min max)
+
+    variable |      mean        sd       min       max
+-------------+----------------------------------------
+   gdppercap |  3973.758  1400.165  1842.667  8537.282
+     invrate |  .2669457   .052078  .2065782  .3792055
+      shvain |  .3179267  .0966674  .2004272  .5636896
+      shvaag |  .0954975  .0419686  .0409339  .1780564
+      shvams |  .4118428  .0648325  .2569546  .5092418
+     shvanms |  .1747329    .05501  .0962153  .2789831
+     shskill |    .17749  .0441551   .096496  .2609191
+     density |  145.7683  77.13361  28.78138  317.0825
+------------------------------------------------------
+
+. log close 
+      name:  <unnamed>
+       log:  C:\Users\Pinotti\Dropbox\mafia\data\filesforEJ\results\Table1.log
+  log type:  text
+ closed on:  13 Aug 2014, 17:36:27
+-------------------------------------------------------------------------------------------------------------------------------
