@@ -1,5 +1,2 @@
-__pxcache__/
-*.pyc
-.idea/
-.ipynb_checkpoints/
-*.html
+.DS_Store
+.ipynb_checkpoints
