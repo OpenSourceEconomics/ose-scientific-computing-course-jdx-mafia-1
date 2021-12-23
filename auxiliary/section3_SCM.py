@@ -20,10 +20,13 @@ from joblib import Parallel, delayed
 from scipy.optimize import differential_evolution, NonlinearConstraint, Bounds
 
 
-def data_prep():
+def data_prep(data):
     """ Specify conditions for treated unit and control units as per Pinotti's paper (c.f. F216), 
         where 21 are regions "NEW" with recent mafia presence: Apulia and Basilicata """
-
+    
+    dtafile = './dataset/Pinotti-replication/dataset.dta'
+    data = pd.read_stata(dtafile)
+    
     treat_unit     = data[data.reg == 21]
     treat_unit     = treat_unit[treat_unit.year <= 1960]                 # Matching period: 1951 to 1960
     treat_unit_all = data[data.reg == 21]                                # Entire period:   1951 to 2007
@@ -55,17 +58,17 @@ def data_prep():
     X1 = X.loc[(X.index == 21),(predictor_variables)]
     X1 = X1.groupby(X1.index).mean().values.T
     
-    return (X0,X1)
+    return (treat_unit, treat_unit_all, control_units, control_units_all, y_treat, y_treat_all, y_control, y_control_all, Z1, Z0, X0, X1)
 
     
     
 
     
 
-def cvxpy_basic_solution():
+def cvxpy_basic_solution(control_units, X0, X1):
     """Initial simple CVXPY setup: Defines function to call and output a vector of weights function """
     
-    data_prep()
+    #data_prep()
     
     def w_optimize(v=None):
         V = np.zeros(shape=(8, 8))
@@ -74,7 +77,7 @@ def cvxpy_basic_solution():
         else:
             np.fill_diagonal(V, v)
             
-        X0,X1 = data_prep()
+        #X0,X1 = data_prep()
         W = cp.Variable((15, 1), nonneg=True) ## Creates a 15x1 positive nonnegative variable
         objective_function    = cp.Minimize(cp.sum(V @ cp.square(X1 - X0 @ W)))
         objective_constraints = [cp.sum(W) == 1]
@@ -89,20 +92,24 @@ def cvxpy_basic_solution():
     solution_frame_1 = pd.DataFrame({'Region':control_units.region.unique(), 
                            'Weights': np.round(w_basic.T[0], decimals=3)})
 
-    display(solution_frame_1)
+    return display(solution_frame_1)
 
     
     
 
     
 
-def dynamic_graph_1():
+def dynamic_graph_1(y_control_all, y_treat_all, data):
     
     """ Plots Figure 3.1: Synthetic Control Optimizer vs. Treated unit 
         for CVXPY initial optimizer, Pinotti, Becker and Klößner against the treated unit outcomes """
-
+    
+    dtafile = './dataset/Pinotti-replication/dataset.dta'
+    data = pd.read_stata(dtafile)
+    
     w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
     w_becker = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4303541, 0.4893414, 0.0803045]).reshape(15,1)
+    w_basic = np.array([0., 0., 0., 0., 0.15165999, 0., 0., 0., 0., 0., 0., 0., 0., 0.84834001, 0.]).reshape(15,1)
 
     y_synth_pinotti = w_pinotti.T @ y_control_all
     y_synth_becker = w_becker.T @ y_control_all
@@ -139,16 +146,20 @@ def dynamic_graph_1():
     fig.update_layout(title='Figure 3.1: Synthetic Control Optimizer vs. Treated unit',
                    xaxis_title='Time', yaxis_title='GDP per Capita')
 
-    fig.show()
+    return fig.show()
 
     
     
 
     
 
-def RMSPE_compare_1():
+def RMSPE_compare_1(Z1, Z0):
     """ Defines function for Root Mean Squared Prediction Error (RMSPE)
         and generates dataframe for RMSPE values comparison between CVXPY output, Pinotti, Becker """
+    
+    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
+    w_becker = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4303541, 0.4893414, 0.0803045]).reshape(15,1)
+    w_basic = np.array([0., 0., 0., 0., 0.15165999, 0., 0., 0., 0., 0., 0., 0., 0., 0.84834001, 0.]).reshape(15,1)
     
     # Function to obtain RMSPE
     def RMSPE(w):
@@ -158,15 +169,19 @@ def RMSPE_compare_1():
     RMSPE_values = [RMSPE(w_basic), RMSPE(w_pinotti), RMSPE(w_becker)]
     method = ['RMSPE CVXPY','RMSPE Pinotti','RMSPE Becker']
     RMSPE_compare = pd.DataFrame({'Outcome':RMSPE_values}, index=method)
-    display(RMSPE_compare)
+    return display(RMSPE_compare)
 
     
     
 
     
 
-def table_predicted_actual():
+def table_predicted_actual(X1, X0):
     """ Dataframe to show predicted vs. actual values of variables """
+    dtafile = './dataset/Pinotti-replication/dataset.dta'
+    data = pd.read_stata(dtafile)
+    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
+    w_basic = np.array([0., 0., 0., 0., 0.15165999, 0., 0., 0., 0., 0., 0., 0., 0., 0.84834001, 0.]).reshape(15,1)
     
     x_pred_pinotti = (X0 @ w_pinotti)
     x_pred_basic = (X0 @ w_basic)
@@ -181,7 +196,7 @@ def table_predicted_actual():
                              'Optimizer Differential': pred_error_basic.T[0]},
                               index= data.columns[[3,16,11,12,13,14,26,28]])
 
-    display(data_compare)
+    return display(data_compare)
 
     
     

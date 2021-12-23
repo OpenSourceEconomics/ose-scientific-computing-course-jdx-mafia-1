@@ -23,7 +23,7 @@ def data(frame_name):
     """ 
     Defines necesary dataframes for future plots.
     Args:
-        frame_name -> string with 
+        frame_name -> string 
     Example: data("df2") generates necessary dataframe for figure 2.1
     """
     
