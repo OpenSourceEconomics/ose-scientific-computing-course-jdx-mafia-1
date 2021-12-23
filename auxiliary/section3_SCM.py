@@ -204,15 +204,36 @@ def table_predicted_actual(X1, X0):
     
 
 ##############################
-##   CVXPY implementation   ##
+##   CVXPY implementation   ##   leave it the main notebook
 ##############################
 
-def CVXPY_iterative():
+n = 100000
+
+def CVXPY_iterative(n, X0, X1, Z0, Z1, control_units, dtafile):
     """ CVXPY iterative implementation 
         Approach 1: Iterating over the solution set by generating  𝑉  from a Dirichlet distribution"""
 
-    n = 100000
     iteration_2 = []
+
+    data = pd.read_stata(dtafile)
+    
+    def w_optimize(v=None):
+        V = np.zeros(shape=(8, 8))
+        if v is None:
+            np.fill_diagonal(V, [1/8]*8)
+        else:
+            np.fill_diagonal(V, v)
+            
+        #X0,X1 = data_prep()
+        W = cp.Variable((15, 1), nonneg=True) ## Creates a 15x1 positive nonnegative variable
+        objective_function    = cp.Minimize(cp.sum(V @ cp.square(X1 - X0 @ W)))
+        objective_constraints = [cp.sum(W) == 1]
+        objective_solution    = cp.Problem(objective_function, objective_constraints).solve(verbose=False)
+    
+        return (W.value,objective_solution)
+    
+    def RMSPE(w):
+        return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
 
     def f(x):
         np.random.seed(x)
@@ -228,8 +249,10 @@ def CVXPY_iterative():
         ## use Parallel() to save time
         ## n_jobs=-1 -> all CPU used
         ## delayed(f)(x) for x in list(range(1,n+1))  -> computes function f in parallel, for var x from 1 to n+1
+
+
+    """ Organize output of CVXPY into dataframe """
     
-    # Organize output into dataframe
     solution_frame_2 = pd.DataFrame(iteration_2)
     solution_frame_2.columns =['Error', 'Relative Importance', 'Weights']
 
@@ -246,6 +269,13 @@ def CVXPY_iterative():
 
     display(best_weights_region)
     display(best_weights_importance)
+    
+    return (w_cvxpy, v_cvxpy)
+    
+    """ side by side dataframes display attempt 
+    Use HTML+CSS ??? https://python.engineering/38783027-jupyter-notebook-display-two-pandas-tables-side-by-side/
+    """
+    #return display(best_weights_importance + best_weights_region) #FAIL: outputs NaN values
 
     
     
@@ -256,8 +286,13 @@ def CVXPY_iterative():
 ##   scipy implementation   ##
 ##############################
 
-def scipy_weights():
+def scipy_weights(n, X0, X1, Z0, Z1, control_units, dtafile):
     """ scipy implementation """
+    
+    data = pd.read_stata(dtafile)
+    
+    def RMSPE(w):
+        return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
     
     A = X0
     b = X1.ravel()  ## .ravel() returns continuous flattened array [[a,b],[c,d]]->[a,b,c,d]
@@ -272,7 +307,8 @@ def scipy_weights():
         d = c ** 2
         y = np.multiply(v,d)   ## y = v * (X0*x - X1)^2
         return np.sum(y)
-
+    
+    
     def g(x):
     
         np.random.seed(x)    ## deterministic random number generation by setting seed
@@ -306,18 +342,23 @@ def scipy_weights():
 
     display(best_weights_importance2)
     display(best_weights_region2)
+    
+    return (w_scipy, v_scipy)
 
     
     
 
     
 
-def dynamic_graph_2():
+def dynamic_graph_2(w_scipy, w_cvxpy, y_control_all, y_treat_all, dtafile):
     """ Dynamic plot for Figure 3.2: Synthetic Control Optimizer vs. Treated unit
         Plots iterative CVXPY, scipy, Pinotti and Becker versus treated unit outcome """
     
+    data = pd.read_stata(dtafile)
+    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
     y_synth_scipy = w_scipy.T @ y_control_all
     y_synth_cvxpy = w_cvxpy.T @ y_control_all
+    y_synth_pinotti = w_pinotti.T @ y_control_all
     
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=list(data.year.unique()), y=y_synth_cvxpy[0],
@@ -338,12 +379,12 @@ def dynamic_graph_2():
                        xaxis_title='Time', yaxis_title='GDP per Capita')
     fig.show()
 
-    
+   
     
 
     
     
-def RMSPE_compare2():
+def RMSPE_compare2(w_cvxpy, w_scipy, Z1, Z0):
     """ Defines function for Root Mean Squared Prediction Error (RMSPE)
         and generates dataframe for RMSPE values comparison between iterative CVXPY output, scipy and Pinotti """
     
@@ -352,6 +393,7 @@ def RMSPE_compare2():
         return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
     
     # Dataframe to compare RMSPE values
+    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
     RMSPE_values2 = [RMSPE(w_cvxpy), RMSPE(w_scipy), RMSPE(w_pinotti)]
     method2 = ['RMSPE CVXPY','RMSPE scipy','RMSPE Pinotti']
     RMSPE_compare2 = pd.DataFrame({'RMSE':RMSPE_values2}, index=method2)
@@ -365,8 +407,20 @@ def RMSPE_compare2():
 
     
     
-def nested_data_prep():
+def nested_data_prep(dtafile):
     """ Data preparation to proceed with nested optimization """
+    
+    data = pd.read_stata(dtafile)
+    
+    unit_identifier     = 'reg'
+    time_identifier     = 'year'
+    matching_period     = list(range(1951, 1961))
+    treat_unit          = 21
+    control_units       = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20]
+    outcome_variable    = ['gdppercap']
+    predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
+    reps                = 1
+    entire_period       = list(range(1951, 2008))
     
     def data_prep(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
                   predictor_variables):
@@ -394,93 +448,120 @@ def nested_data_prep():
 ##   CVXPY CODE, SETTINGS AND OUTPUT VISUALIZATION   ##
 #######################################################
     
-def CVXPY_nested():
-    """ Approach 2: Nested Optimization: Combination of outer optimization ( 𝑊∗(𝑉) ) via Differential Evolution 
-        and inner optimization  (𝑊)  via CVXPY convex minimization """
+#def CVXPY_nested(dtafile):
+#    """ Approach 2: Nested Optimization: Combination of outer optimization ( 𝑊∗(𝑉) ) via Differential Evolution 
+#        and inner optimization  (𝑊)  via CVXPY convex minimization """
+
+""" data_prep_2 """
+
+def data_prep_2(dtafile,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
+              predictor_variables):
     
-    nested_data_prep()
+    data = pd.read_stata(dtafile)
     
-    ## CVXPY ##
-    def SCM(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
-                  predictor_variables,reps = 1):
-        X0, X1, Z0, Z1 = data_prep(data,unit_identifier,time_identifier,matching_period,treat_unit,
-                                   control_units,outcome_variable,predictor_variables)
-
-        # Inner optimization
-        def w_optimize(v):
-
-            W = cp.Variable((len(control_units), 1), nonneg=True)
-            objective_function    = cp.Minimize(cp.norm(cp.multiply(v, X1 - X0 @ W)))
-            objective_constraints = [cp.sum(W) == 1]
-            objective_solution    = cp.Problem(objective_function, objective_constraints).solve(verbose=False)
-            return (W.value)
-
-        # Outer optimization
-        def vmin(v): 
-            v = v.reshape(len(predictor_variables),1)
-            W = w_optimize(v)
-            return ((Z1 - Z0 @ W).T @ (Z1 - Z0 @ W)).ravel()
-
-        def constr_f(v):
-            return float(np.sum(v))
-
-        def constr_hess(x,v):
-            v=len(predictor_variables)
-            return np.zeros([v,v])
-
-        def constr_jac(v):
-            v=len(predictor_variables)
-            return np.ones(v)
-
-        def RMSPE_f(w):
-            return np.sqrt(np.mean((w.T @ Z0.T - Z1.T)**2))
-
-        def v_optimize(i):
-            bounds  = [(0,1)]*len(predictor_variables)
-            nlc     = NonlinearConstraint(constr_f, 1, 1, constr_jac, constr_hess)
-            result  = differential_evolution(vmin, bounds, constraints=(nlc),seed=i,tol=0.01)
-            v_estim = result.x.reshape(len(predictor_variables),1)  
-            return (v_estim)
-
-        def h(x):
-            v_estim1 = v_optimize(x)
-            w_estim1 = w_optimize(v_estim1)
-            prediction_error = RMSPE_f(w_estim1)
-            output_vec = [prediction_error, v_estim1, w_estim1]
-            return output_vec
-
-        iterations = []
-        iterations = Parallel(n_jobs=-1)(delayed(h)(x) for x in list(range(1,reps+1)))
-
-        solution_frame = pd.DataFrame(iterations)
-        solution_frame.columns =['Error', 'Relative Importance', 'Weights']
-        solution_frame = solution_frame.sort_values(by='Error', ascending=True)
-
-        w_nested = solution_frame.iloc[0][2]
-        v_nested = solution_frame.iloc[0][1].T[0]
-
-        output = [solution_frame,w_nested,v_nested,RMSPE_f(w_nested)]
-        return output
+    X = data.loc[data[time_identifier].isin(matching_period)]
+    X.index = X.loc[:,unit_identifier]
     
-    ## SETTINGS
-    unit_identifier     = 'reg'
-    time_identifier     = 'year'
-    matching_period     = list(range(1951, 1961))
-    treat_unit          = 21
-    control_units       = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20]
-    outcome_variable    = ['gdppercap']
-    predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
-    reps                = 1
-    entire_period       = list(range(1951, 2008))
-
-    output_object = SCM(data,unit_identifier,time_identifier,matching_period,treat_unit,
-                        control_units,outcome_variable,predictor_variables,reps)
+    X0 = X.loc[(X.index.isin(control_units)),(predictor_variables)] 
+    X0 = X0.groupby(X0.index).mean().values.T                         #control predictors
     
-    ## ORGANIZE OUTPUT INTO DATAFRAME
+    X1 = X.loc[(X.index == treat_unit),(predictor_variables)]
+    X1 = X1.groupby(X1.index).mean().values.T                         #treated predictors
+
+    Z0 = np.array(X.loc[(X.index.isin(control_units)),(outcome_variable)]).reshape(len(control_units),len(matching_period)).T  #control outcome
+    Z1 = np.array(X.loc[(X.index == treat_unit),(outcome_variable)]).reshape(len(matching_period),1)                           #treated outcome
+    
+    return X0, X1, Z0, Z1
+
+
+""" SCM FUNCTION """
+def SCM(X0, X1, Z0, Z1, data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
+              predictor_variables,reps = 1):
+    
+   
+    #inner optimization
+    def w_optimize(v):
+
+        W = cp.Variable((len(control_units), 1), nonneg=True)
+        objective_function    = cp.Minimize(cp.norm(cp.multiply(v, X1 - X0 @ W)))
+        objective_constraints = [cp.sum(W) == 1]
+        objective_solution    = cp.Problem(objective_function, objective_constraints).solve(verbose=False)
+        return (W.value)
+    
+    #outer optimization
+    def vmin(v): 
+
+        v = v.reshape(len(predictor_variables),1)
+        W = w_optimize(v)
+        return ((Z1 - Z0 @ W).T @ (Z1 - Z0 @ W)).ravel()
+
+    def constr_f(v):
+        return float(np.sum(v))
+
+    def constr_hess(x,v):
+        v=len(predictor_variables)
+        return np.zeros([v,v])
+
+    def constr_jac(v):
+        v=len(predictor_variables)
+        return np.ones(v)
+
+    def RMSPE_f(w):
+        return np.sqrt(np.mean((w.T @ Z0.T - Z1.T)**2))
+    
+    def v_optimize(i):
+    
+        bounds  = [(0,1)]*len(predictor_variables)
+        nlc     = NonlinearConstraint(constr_f, 1, 1, constr_jac, constr_hess)
+        result  = differential_evolution(vmin, bounds, constraints=(nlc),seed=i,tol=0.01)
+        v_estim = result.x.reshape(len(predictor_variables),1)  
+        return (v_estim)
+    
+    def h(x):
+    
+        v_estim1 = v_optimize(x)
+        w_estim1 = w_optimize(v_estim1)
+        prediction_error = RMSPE_f(w_estim1)
+        output_vec = [prediction_error, v_estim1, w_estim1]
+        return output_vec
+
+    iterations = []
+    iterations = Parallel(n_jobs=-1)(delayed(h)(x) for x in list(range(1,reps+1)))
+      
+    solution_frame = pd.DataFrame(iterations)
+    solution_frame.columns =['Error', 'Relative Importance', 'Weights']
+    solution_frame = solution_frame.sort_values(by='Error', ascending=True)
+
+    w_nested = solution_frame.iloc[0][2]
+    v_nested = solution_frame.iloc[0][1].T[0]
+    
+    output = [solution_frame,w_nested,v_nested,RMSPE_f(w_nested)]
+    
+    return output
+
+
+# DATAFRAME SOLUTION
+def solution_output_SCM(dtafile, output_object, Z0, Z1):
+    data = pd.read_stata(dtafile)
+    #unit_identifier     = 'reg'
+    #time_identifier     = 'year'
+    #matching_period     = list(range(1951, 1961))
+    #treat_unit          = 21
+    #control_units       = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20]
+    #outcome_variable    = ['gdppercap']
+    #predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
+    #reps                = 1
+    #entire_period       = list(range(1951, 2008))
+
+    #output_object = SCM(data,unit_identifier,time_identifier,matching_period,treat_unit,
+    #                    control_units,outcome_variable,predictor_variables,reps)
+
     solution_frame_4 = output_object[0]
     w_nested = output_object[1]
     v_nested = output_object[2]
     control_units = data[(data.reg <= 14) | (data.reg == 20)]
+    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
+
 
     best_weights_region3 = pd.DataFrame({'Region':control_units.region.unique(), 
                                         'W(V*)': np.round(w_nested.ravel(), decimals=3)})
@@ -494,12 +575,14 @@ def CVXPY_nested():
     print('\nOptimizer Weights: {} \nPaper Weights:  {}'\
           .format(np.round(w_nested.T,3), np.round(w_pinotti,3).T))
 
+    def RMSPE(w):
+        return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
+
     print('\nRMSPE Nested:    {} \nRMSPE Pinotti:   {}'\
           .format(np.round(RMSPE(w_nested),5), np.round(RMSPE(w_pinotti),5)))
 
-    
-    
 
+#############################################################################################
     
 
 
