@@ -447,15 +447,15 @@ def nested_data_prep(dtafile):
 #######################################################
 ##   CVXPY CODE, SETTINGS AND OUTPUT VISUALIZATION   ##
 #######################################################
-    
-#def CVXPY_nested(dtafile):
-#    """ Approach 2: Nested Optimization: Combination of outer optimization ( 𝑊∗(𝑉) ) via Differential Evolution 
-#        and inner optimization  (𝑊)  via CVXPY convex minimization """
 
-""" data_prep_2 """
+""" Approach 2: Nested Optimization: Combination of outer optimization ( 𝑊∗(𝑉) ) via Differential Evolution 
+    and inner optimization  (𝑊)  via CVXPY convex minimization """
+
+
 
 def data_prep_2(dtafile,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
               predictor_variables):
+    """ Generates the necessary matrices and vectors to proceed with nested optimization """
     
     data = pd.read_stata(dtafile)
     
@@ -474,12 +474,14 @@ def data_prep_2(dtafile,unit_identifier,time_identifier,matching_period,treat_un
     return X0, X1, Z0, Z1
 
 
-""" SCM FUNCTION """
+
+
+
 def SCM(X0, X1, Z0, Z1, data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
               predictor_variables,reps = 1):
+    """ NESTED CXVPY SCM FUNCTION """
     
-   
-    #inner optimization
+    # Inner optimization
     def w_optimize(v):
 
         W = cp.Variable((len(control_units), 1), nonneg=True)
@@ -488,7 +490,7 @@ def SCM(X0, X1, Z0, Z1, data,unit_identifier,time_identifier,matching_period,tre
         objective_solution    = cp.Problem(objective_function, objective_constraints).solve(verbose=False)
         return (W.value)
     
-    #outer optimization
+    # Outer optimization
     def vmin(v): 
 
         v = v.reshape(len(predictor_variables),1)
@@ -540,21 +542,14 @@ def SCM(X0, X1, Z0, Z1, data,unit_identifier,time_identifier,matching_period,tre
     return output
 
 
-# DATAFRAME SOLUTION
-def solution_output_SCM(dtafile, output_object, Z0, Z1):
-    data = pd.read_stata(dtafile)
-    #unit_identifier     = 'reg'
-    #time_identifier     = 'year'
-    #matching_period     = list(range(1951, 1961))
-    #treat_unit          = 21
-    #control_units       = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20]
-    #outcome_variable    = ['gdppercap']
-    #predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
-    #reps                = 1
-    #entire_period       = list(range(1951, 2008))
 
-    #output_object = SCM(data,unit_identifier,time_identifier,matching_period,treat_unit,
-    #                    control_units,outcome_variable,predictor_variables,reps)
+
+
+
+def solution_output_SCM(dtafile, output_object, Z0, Z1):
+    """ Builds dataframes to display the solution """
+    
+    data = pd.read_stata(dtafile)
 
     solution_frame_4 = output_object[0]
     w_nested = output_object[1]
@@ -583,11 +578,14 @@ def solution_output_SCM(dtafile, output_object, Z0, Z1):
 
 
 #############################################################################################
+#############################################################################################
+
+
+def global_optimum(Z1, Z0, X1, X0):
+    """ Checks feasibility of unconstrained solution: unrestricted outer optimum in SECTION 3.4 """
     
-
-
-def global_optimum():
-    """ Checks feasibility of unconstrained solution: unrestricted outer optimum """
+    w_becker = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4303541, 0.4893414, 0.0803045]).reshape(15,1)
+    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
     
     W = cp.Variable((15, 1), nonneg=True)
     objective_function    = cp.Minimize(np.mean(cp.norm(Z1 - Z0 @ W)))
@@ -604,21 +602,33 @@ def global_optimum():
 
     print('\nOptimizer Weights: {} \nOptimal Weights:  {}'\
           .format(np.round(w_global.T,5), np.round(w_becker,5).T))
+    
+    def RMSPE(w):
+        return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
 
     print('\nRMSPE Global:   {} \nRMSPE Becker:    {}'\
           .format(np.round(RMSPE(w_global),6), np.round(RMSPE(w_becker),6)))
-
+    return (w_global, v_global)
     
     
 
     
 
 
-def dynamic_graph_3():
+def dynamic_graph_3(y_control_all, y_treat_all, output_object, dtafile):
     """ Dynamic plot of Figure 3.3: Synthetic Control Optimizer vs. Treated unit 
-        Plots nested CVXPY optimizer, Pinotti, Becker and Klößner versus treated unit outcome """
+        Plots nested CVXPY optimizer, Pinotti, Becker and Klößner versus treated unit outcome 
+        SECTION 3.5 """
+    
+    data = pd.read_stata(dtafile)
+    
+    w_becker = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4303541, 0.4893414, 0.0803045]).reshape(15,1)
+    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
+    w_nested = output_object[1]
+    
     
     y_synth_becker = w_becker.T @ y_control_all
+    y_synth_pinotti = w_pinotti.T @ y_control_all
     y_synth_nested = w_nested.T @ y_control_all
 
     fig = go.Figure()
@@ -646,11 +656,15 @@ def dynamic_graph_3():
     
 
 
-def matching_characteristics_table():
+def matching_characteristics_table(X0, X1, w_global, predictor_variables, v_global, dtafile):
     """ Dataframe with matching period characteristics for Apulia and Basilicata, Synthetic Control, Control Units """
     
+    data = pd.read_stata(dtafile)
     v_pinotti = [0.006141563, 0.464413137, 0.006141563, 0.013106925, 0.006141563, 0.033500548, 0.006141563, 0.464413137]
 
+    X = data.loc[data['year'].isin(list(range(1951, 1961)))]
+    X.index = X.loc[:,'reg']
+    
     x_pred_global = (X0 @ w_global).ravel()
     control_stats = X.loc[(X.index <= 14) | (X.index ==20),
                           (predictor_variables)].describe().drop(['count','25%', '50%','75%'], axis=0).T
@@ -671,13 +685,15 @@ def matching_characteristics_table():
     
 
 
-def diff_figure_4():
+def diff_figure_4(control_units_all, treat_unit_all, y_control_all, y_treat_all, output_object, dtafile):
     """ Generates Figure 3.4: Actual vs Synthetic Differences over time: GDP per capita and Murders 
         Shows differences in evolution of murder rates and GDP per capita between the actual realizations of Apulia 
         and Basilicata and the ones predicted by the synthetic control unit """
     
+    data = pd.read_stata(dtafile)
     murd_treat_all      = np.array(treat_unit_all.murd).reshape(1, 57)
     murd_control_all    = np.array(control_units_all.murd).reshape(15, 57)
+    w_nested = output_object[1]
     synth_murd = w_nested.T @ murd_control_all
     synth_gdp = w_nested.T @ y_control_all
     diff_GDP = (((y_treat_all-synth_gdp)/(synth_gdp))*100).ravel()
