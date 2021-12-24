@@ -1,5 +1,6 @@
 """ Auxiliary code with functions for plotting static graphs in section 2 of the main notebook """
 
+# All notebook dependencies:
 import numpy as np
 import pandas as pd
 import cvxpy as cp
@@ -11,7 +12,6 @@ import scipy.optimize as optimize
 import statsmodels.formula.api as smf
 from joblib import Parallel, delayed
 from scipy.optimize import differential_evolution, NonlinearConstraint, Bounds
-
 dtafile = './dataset/Pinotti-replication/dataset.dta'
 data = pd.read_stata(dtafile)
 
@@ -19,7 +19,7 @@ data = pd.read_stata(dtafile)
 
 
 
-def data(frame_name):
+def data_prep(frame_name):
     """ 
     Defines necesary dataframes for future plots.
     Args:
@@ -56,11 +56,10 @@ def mafia_presence_avg(df2):
     Plots Figure 2.1: GDP per capita and mafia presence, 1983–2007 average
     """
 
-    """ Colors for graph """
     color = np.where((df2['reg'] == 15) | (df2['reg'] == 18) | (df2['reg'] == 19), 'midnightblue',           # EXCLUDED
                      np.where((df2['reg'] == 16) | (df2['reg'] == 17), 'mediumslateblue',                    # TREATED
                      np.where((df2['reg'] <= 12) | (df2['reg'] == 20), 'salmon', 'none')))                   # THE REST
-    df2 = data("df2") 
+    df2 = data_prep("df2") 
     df2.plot.scatter('mafia', 'gdppercap', c = color, s = 10, linewidth = 3, 
                  xlabel = 'Presence of mafia organisations', ylabel = 'GDP per capita', ylim = [7000,15000], xlim = [0,2.25],
                  title = 'Figure 2.1: GDP per capita and mafia presence, 1983–2007 average')

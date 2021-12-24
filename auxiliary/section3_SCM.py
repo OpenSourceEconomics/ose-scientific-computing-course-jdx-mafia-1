@@ -6,7 +6,7 @@
         - optimization with CVXPY and scipy 
         - dataframes for RMSPE and outputs """
 
-
+# All notebook dependencies:
 import numpy as np
 import pandas as pd
 import cvxpy as cp
@@ -20,7 +20,10 @@ from joblib import Parallel, delayed
 from scipy.optimize import differential_evolution, NonlinearConstraint, Bounds
 
 
-def data_prep(data):
+
+
+def data_prep_1(data):
+    
     """ Specify conditions for treated unit and control units as per Pinotti's paper (c.f. F216), 
         where 21 are regions "NEW" with recent mafia presence: Apulia and Basilicata """
     
@@ -66,9 +69,8 @@ def data_prep(data):
     
 
 def cvxpy_basic_solution(control_units, X0, X1):
-    """Initial simple CVXPY setup: Defines function to call and output a vector of weights function """
     
-    #data_prep()
+    """Initial CVXPY setup: defines function to call and output a vector of weights function """
     
     def w_optimize(v=None):
         V = np.zeros(shape=(8, 8))
@@ -77,7 +79,6 @@ def cvxpy_basic_solution(control_units, X0, X1):
         else:
             np.fill_diagonal(V, v)
             
-        #X0,X1 = data_prep()
         W = cp.Variable((15, 1), nonneg=True) ## Creates a 15x1 positive nonnegative variable
         objective_function    = cp.Minimize(cp.sum(V @ cp.square(X1 - X0 @ W)))
         objective_constraints = [cp.sum(W) == 1]
@@ -154,6 +155,7 @@ def dynamic_graph_1(y_control_all, y_treat_all, data):
     
 
 def RMSPE_compare_1(Z1, Z0):
+    
     """ Defines function for Root Mean Squared Prediction Error (RMSPE)
         and generates dataframe for RMSPE values comparison between CVXPY output, Pinotti, Becker """
     
@@ -177,7 +179,9 @@ def RMSPE_compare_1(Z1, Z0):
     
 
 def table_predicted_actual(X1, X0):
+    
     """ Dataframe to show predicted vs. actual values of variables """
+    
     dtafile = './dataset/Pinotti-replication/dataset.dta'
     data = pd.read_stata(dtafile)
     w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
@@ -210,6 +214,7 @@ def table_predicted_actual(X1, X0):
 n = 100000
 
 def CVXPY_iterative(n, X0, X1, Z0, Z1, control_units, dtafile):
+    
     """ CVXPY iterative implementation 
         Approach 1: Iterating over the solution set by generating  𝑉  from a Dirichlet distribution"""
 
@@ -223,8 +228,7 @@ def CVXPY_iterative(n, X0, X1, Z0, Z1, control_units, dtafile):
             np.fill_diagonal(V, [1/8]*8)
         else:
             np.fill_diagonal(V, v)
-            
-        #X0,X1 = data_prep()
+        
         W = cp.Variable((15, 1), nonneg=True) ## Creates a 15x1 positive nonnegative variable
         objective_function    = cp.Minimize(cp.sum(V @ cp.square(X1 - X0 @ W)))
         objective_constraints = [cp.sum(W) == 1]
@@ -287,6 +291,7 @@ def CVXPY_iterative(n, X0, X1, Z0, Z1, control_units, dtafile):
 ##############################
 
 def scipy_weights(n, X0, X1, Z0, Z1, control_units, dtafile):
+    
     """ scipy implementation """
     
     data = pd.read_stata(dtafile)
@@ -351,6 +356,7 @@ def scipy_weights(n, X0, X1, Z0, Z1, control_units, dtafile):
     
 
 def dynamic_graph_2(w_scipy, w_cvxpy, y_control_all, y_treat_all, dtafile):
+    
     """ Dynamic plot for Figure 3.2: Synthetic Control Optimizer vs. Treated unit
         Plots iterative CVXPY, scipy, Pinotti and Becker versus treated unit outcome """
     
@@ -385,6 +391,7 @@ def dynamic_graph_2(w_scipy, w_cvxpy, y_control_all, y_treat_all, dtafile):
     
     
 def RMSPE_compare2(w_cvxpy, w_scipy, Z1, Z0):
+    
     """ Defines function for Root Mean Squared Prediction Error (RMSPE)
         and generates dataframe for RMSPE values comparison between iterative CVXPY output, scipy and Pinotti """
     
@@ -407,36 +414,7 @@ def RMSPE_compare2(w_cvxpy, w_scipy, Z1, Z0):
 
     
     
-def nested_data_prep(dtafile):
-    """ Data preparation to proceed with nested optimization """
-    
-    data = pd.read_stata(dtafile)
-    
-    unit_identifier     = 'reg'
-    time_identifier     = 'year'
-    matching_period     = list(range(1951, 1961))
-    treat_unit          = 21
-    control_units       = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20]
-    outcome_variable    = ['gdppercap']
-    predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
-    reps                = 1
-    entire_period       = list(range(1951, 2008))
-    
-    def data_prep(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
-                  predictor_variables):
-        
-        X = data.loc[data[time_identifier].isin(matching_period)]
-        X.index = X.loc[:,unit_identifier]
-        
-        X0 = X.loc[(X.index.isin(control_units)),(predictor_variables)] 
-        X0 = X0.groupby(X0.index).mean().values.T                         #control predictors
-        
-        X1 = X.loc[(X.index == treat_unit),(predictor_variables)]
-        X1 = X1.groupby(X1.index).mean().values.T                         #treated predictors
-    
-        Z0 = np.array(X.loc[(X.index.isin(control_units)),(outcome_variable)]).reshape(len(control_units),len(matching_period)).T  #control outcome
-        Z1 = np.array(X.loc[(X.index == treat_unit),(outcome_variable)]).reshape(len(matching_period),1)                           #treated outcome
-        return X0, X1, Z0, Z1
+
 
     
     
@@ -453,10 +431,12 @@ def nested_data_prep(dtafile):
 
 
 
-def data_prep_2(dtafile,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
+def data_prep_2(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
               predictor_variables):
+    
     """ Generates the necessary matrices and vectors to proceed with nested optimization """
     
+    dtafile = './dataset/Pinotti-replication/dataset.dta'
     data = pd.read_stata(dtafile)
     
     X = data.loc[data[time_identifier].isin(matching_period)]
@@ -477,11 +457,14 @@ def data_prep_2(dtafile,unit_identifier,time_identifier,matching_period,treat_un
 
 
 
-def SCM(X0, X1, Z0, Z1, data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
+
+def SCM(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
               predictor_variables,reps = 1):
-    """ NESTED CXVPY SCM FUNCTION """
     
-    # Inner optimization
+    X0, X1, Z0, Z1 = data_prep_2(data,unit_identifier,time_identifier,matching_period,treat_unit,
+                               control_units,outcome_variable,predictor_variables)
+    
+    #inner optimization
     def w_optimize(v):
 
         W = cp.Variable((len(control_units), 1), nonneg=True)
@@ -490,7 +473,7 @@ def SCM(X0, X1, Z0, Z1, data,unit_identifier,time_identifier,matching_period,tre
         objective_solution    = cp.Problem(objective_function, objective_constraints).solve(verbose=False)
         return (W.value)
     
-    # Outer optimization
+    #outer optimization
     def vmin(v): 
 
         v = v.reshape(len(predictor_variables),1)
@@ -545,12 +528,31 @@ def SCM(X0, X1, Z0, Z1, data,unit_identifier,time_identifier,matching_period,tre
 
 
 
+def settings():
+    
+    """ sets necessary parameters for SCM function, solution_output_SCM function and graphs in section 4 """
+    
+    unit_identifier     = 'reg'
+    time_identifier     = 'year'
+    matching_period     = list(range(1951, 1961))
+    treat_unit          = 21
+    control_units       = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20]
+    outcome_variable    = ['gdppercap']
+    predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
+    reps                = 1
+    entire_period       = list(range(1951, 2008))
+    return unit_identifier, time_identifier, matching_period, treat_unit, control_units, outcome_variable, predictor_variables, reps, entire_period
 
-def solution_output_SCM(dtafile, output_object, Z0, Z1):
+
+
+
+
+
+
+def solution_output_SCM(data, output_object, Z0, Z1):
+    
     """ Builds dataframes to display the solution """
     
-    data = pd.read_stata(dtafile)
-
     solution_frame_4 = output_object[0]
     w_nested = output_object[1]
     v_nested = output_object[2]
@@ -577,11 +579,13 @@ def solution_output_SCM(dtafile, output_object, Z0, Z1):
           .format(np.round(RMSPE(w_nested),5), np.round(RMSPE(w_pinotti),5)))
 
 
-#############################################################################################
-#############################################################################################
+    
+    
+############################################################################################################################################
 
 
 def global_optimum(Z1, Z0, X1, X0):
+    
     """ Checks feasibility of unconstrained solution: unrestricted outer optimum in SECTION 3.4 """
     
     w_becker = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4303541, 0.4893414, 0.0803045]).reshape(15,1)
@@ -616,6 +620,7 @@ def global_optimum(Z1, Z0, X1, X0):
 
 
 def dynamic_graph_3(y_control_all, y_treat_all, output_object, dtafile):
+    
     """ Dynamic plot of Figure 3.3: Synthetic Control Optimizer vs. Treated unit 
         Plots nested CVXPY optimizer, Pinotti, Becker and Klößner versus treated unit outcome 
         SECTION 3.5 """
@@ -657,6 +662,7 @@ def dynamic_graph_3(y_control_all, y_treat_all, output_object, dtafile):
 
 
 def matching_characteristics_table(X0, X1, w_global, predictor_variables, v_global, dtafile):
+    
     """ Dataframe with matching period characteristics for Apulia and Basilicata, Synthetic Control, Control Units """
     
     data = pd.read_stata(dtafile)
@@ -686,7 +692,7 @@ def matching_characteristics_table(X0, X1, w_global, predictor_variables, v_glob
 
 
 def diff_figure_4(control_units_all, treat_unit_all, y_control_all, y_treat_all, output_object, dtafile):
-    """ Generates Figure 3.4: Actual vs Synthetic Differences over time: GDP per capita and Murders 
+    """ Generates Figure 3.4: Actual vs Synthetic Differences over time: GDP per capita and Murders.
         Shows differences in evolution of murder rates and GDP per capita between the actual realizations of Apulia 
         and Basilicata and the ones predicted by the synthetic control unit """
     
