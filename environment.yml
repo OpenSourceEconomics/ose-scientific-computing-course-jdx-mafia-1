@@ -1,4 +1,4 @@
-name: student_project
+name: jdx_mafia
 
 dependencies:
 - numpy
@@ -9,6 +9,9 @@ dependencies:
 - scipy
 - statsmodels
 - pip
-- pip:
-
+- pip: 
+  - cvxpy
+  - statsmodels
+  - plotly
+  - joblib
 
