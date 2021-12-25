@@ -31,5 +31,5 @@ Authors: Jessica Cremonese, Muhammad-Danial Syed, Xue Wang.
 
 ## Acknowledgements
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](hhttps://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/blob/master/LICENSE) 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/blob/37c9f20c82fa9f328bce4efe5a858feca1d18bbe/LICENSE) 
 </a> 
