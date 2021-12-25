@@ -1,7 +1,7 @@
 # Working title: Constrained optimization of the synthetic control method with application to the Economic Costs of Organized Crime (Pinotti, 2015)
 ###### Authors: Cremonese J., Syed M.D., Wang X.
 
-<a href="https://nbviewer.org/github/disj3ssica/OSE-project/blob/main/Replication%20notebook.ipynb"
+<a href="https://nbviewer.org/github/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/blob/master/Replication%20notebook.ipynb"
    target="_parent">
    <img align="center" 
   src="https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.png" 
