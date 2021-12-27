@@ -14,4 +14,5 @@ dependencies:
   - statsmodels
   - plotly
   - joblib
+  - cplex
 
