@@ -15,4 +15,5 @@ dependencies:
   - plotly
   - joblib
   - cplex
+  - docplex
 
