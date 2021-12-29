@@ -18,4 +18,8 @@ dependencies:
   - docplex
   - gurobipy
   - qpsolvers
+  - cvxopt
+  - scs
+  - osqp
+  - ecos
 
