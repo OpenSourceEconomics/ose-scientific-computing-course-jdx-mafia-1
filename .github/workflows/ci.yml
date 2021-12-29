@@ -20,4 +20,4 @@ jobs:
       run: |
         export PATH="$PATH:/usr/share/miniconda/bin"
         conda activate jdx-mafia
-        jupyter nbconvert --to html --execute --ExecutePreprocessor.timeout=3000 "Replication notebook.ipynb"
+        jupyter nbconvert --to html --execute --ExecutePreprocessor.timeout=5000 "Replication notebook.ipynb"
