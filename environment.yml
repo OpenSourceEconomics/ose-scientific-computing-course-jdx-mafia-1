@@ -16,4 +16,5 @@ dependencies:
   - joblib
   - cplex
   - docplex
+  - gurobipy
 
