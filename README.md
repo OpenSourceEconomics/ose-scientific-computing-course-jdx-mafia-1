@@ -1,4 +1,4 @@
-# Working title: Constrained optimization of the synthetic control method with application to the Economic Costs of Organized Crime (Pinotti, 2015)
+# Constrained optimization of the synthetic control method with application to the Economic Costs of Organised Crime (Pinotti, 2015)
 ###### Authors: Cremonese J., Syed M.D., Wang X.
 
 <a href="https://nbviewer.org/github/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/blob/master/Replication%20notebook.ipynb"
@@ -26,18 +26,18 @@ This project begins with an overview of the topic of organized crime followed by
 
 A final point of departure is the examination of a conflicting result by Becker and Klößner's (2017) response paper to Pinotti (2015). We attempt to reconcile their different findings by investigating some unexpected, recent developments in the literature on the computational challenges of SCM.
 
-## Replication
-***> summary of what we implement and why it is worthwhile***
 
 ## Repository guide
-***> repository folders and files guide***
+We recommend running the repository locally using Jupyter Notebooks. A number of packages and libraries are used throughout the notebook, a fll list with links to the respective online documentation is made available in the opening section of the notebook as well as in the "environment.yml" file.
 
-## References
-Pinotti, Paolo. The economic consequences of organized crime: Evidence from Southern Italy. Bank of Italy (2011)
+The "auxiliary" folder contains .py files with code used in the main notebook, these files are organised according to the section of the notebook in which they are used. The "dataset" folder provides the original dataset provided by Pinotti himself. 
 
-Becker, Martin, and Stefan Klößner. Estimating the economic costs of organized crime by synthetic control methods. Journal of Applied Econometrics 32.7 (2017): 1367-1369.
+## Main references
+The replication project rests on the following two papers:
+- Pinotti, Paolo. [The Economic Costs of Organised Crime: Evidence from Southern Italy](https://onlinelibrary.wiley.com/doi/abs/10.1111/ecoj.12235). Bank of Italy (2011)
+- Becker, Martin, and Stefan Klößner. [Estimating the economic costs of organized crime by synthetic control methods](https://onlinelibrary.wiley.com/doi/abs/10.1002/jae.2572). Journal of Applied Econometrics 32.7 (2017): 1367-1369. <br>
+A complete 
 
-## Acknowledgements
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/blob/37c9f20c82fa9f328bce4efe5a858feca1d18bbe/LICENSE) 
 </a> 
