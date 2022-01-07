@@ -16,8 +16,11 @@
 
 [![Continuous Integration](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/actions/workflows/ci.yml/badge.svg)](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/actions/workflows/ci.yml)
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/blob/37c9f20c82fa9f328bce4efe5a858feca1d18bbe/LICENSE) 
+</a> 
+
 This repository contains our replication project of [The Economic Costs of Organised Crime: Evidence from Southern Italy](https://onlinelibrary.wiley.com/doi/abs/10.1111/ecoj.12235) (Pinotti, 2015) for the OSE Scientific Computing class at Bonn University held during the Winter Semester 2021-2022. <br>
-Authors: Jessica Cremonese, Muhammad-Danial Syed, Xue Wang.
+
 
 ## The Economic Costs of Organised Crime (Pinotti, 2015)
 The issue of organized crime represents a source of potentially adverse socio-economic repercussions across a plethora of communities worldwide, in part due to its prevalence in some form or the other in almost every country. To quantify its impact in the case of the infamous Italian mafia, we replicate the Pinotti (2015) investigation into the economic cost of organized crime in Italy. In doing so, we recreate its main results showing the effect of organized crime on GDP and, in the process, we gain insight into the complexities underlying the Synthetic Control Method (SCM). 
@@ -28,9 +31,9 @@ A final point of departure is the examination of a conflicting result by Becker 
 
 
 ## Repository guide
-We recommend running the repository locally using Jupyter Notebooks. A number of packages and libraries are used throughout the notebook, a fll list with links to the respective online documentation is made available in the opening section of the notebook as well as in the "environment.yml" file.
+We recommend running the repository locally using Jupyter Notebooks. A number of packages and libraries are used throughout the notebook, a fll list with links to the respective online documentation is made available in the opening section of the notebook as well as in [environment.yml](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/blob/master/environment.yml).
 
-The "auxiliary" folder contains .py files with code used in the main notebook, these files are organised according to the section of the notebook in which they are used. The "dataset" folder provides the original dataset provided by Pinotti himself. 
+The [auxiliary](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/tree/master/auxiliary) folder contains .py files with code used in the main notebook, these files are organised according to the section of the notebook in which they are used. The [dataset](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/tree/master/dataset) folder provides the original dataset provided by Pinotti himself. 
 
 ## Main references
 The replication project rests on the following two papers:
@@ -39,5 +42,4 @@ The replication project rests on the following two papers:
 A complete 
 
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/blob/37c9f20c82fa9f328bce4efe5a858feca1d18bbe/LICENSE) 
-</a> 
+
