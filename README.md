@@ -16,9 +16,6 @@
 
 [![Continuous Integration](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/actions/workflows/ci.yml/badge.svg)](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/actions/workflows/ci.yml)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/blob/37c9f20c82fa9f328bce4efe5a858feca1d18bbe/LICENSE) 
-</a> 
-
 This repository contains our replication project of [The Economic Costs of Organised Crime: Evidence from Southern Italy](https://onlinelibrary.wiley.com/doi/abs/10.1111/ecoj.12235) (Pinotti, 2015) for the OSE Scientific Computing class at Bonn University held during the Winter Semester 2021-2022. <br>
 
 
@@ -31,7 +28,9 @@ A final point of departure is the examination of a conflicting result by Becker 
 
 
 ## Repository guide
+
 We recommend running the repository locally using Jupyter Notebooks. A number of packages and libraries are used throughout the notebook, a fll list with links to the respective online documentation is made available in the opening section of the notebook as well as in [environment.yml](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/blob/master/environment.yml).
+
 
 The [auxiliary](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/tree/master/auxiliary) folder contains .py files with code used in the main notebook, these files are organised according to the section of the notebook in which they are used. The [dataset](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/tree/master/dataset) folder provides the original dataset provided by Pinotti himself. 
 
@@ -43,3 +42,5 @@ A complete
 
 
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/blob/37c9f20c82fa9f328bce4efe5a858feca1d18bbe/LICENSE) 
+</a> 
