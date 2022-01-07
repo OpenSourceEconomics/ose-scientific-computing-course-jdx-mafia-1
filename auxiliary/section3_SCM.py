@@ -72,97 +72,118 @@ def cvxpy_basic_solution(control_units, X0, X1):
     
     """Initial CVXPY setup: defines function to call and output a vector of weights function """
     
-    def w_optimize(v=None):
+    def w_optimize(v_diag,solver=cp.ECOS):
+
         V = np.zeros(shape=(8, 8))
-        if v is None:
-            np.fill_diagonal(V, [1/8]*8)
-        else:
-            np.fill_diagonal(V, v)
-            
+        np.fill_diagonal(V,v_diag)
+
         W = cp.Variable((15, 1), nonneg=True) ## Creates a 15x1 positive nonnegative variable
-        objective_function    = cp.Minimize(cp.sum(V @ cp.square(X1 - X0 @ W)))
+        objective_function    = cp.Minimize(cp.norm(V @ (X1 - X0 @ W)))
         objective_constraints = [cp.sum(W) == 1]
-        objective_solution    = cp.Problem(objective_function, objective_constraints).solve(verbose=False)
-    
-        return (W.value,objective_solution)
+        objective_problem     = cp.Problem(objective_function, objective_constraints)
+        objective_solution    = objective_problem.solve(solver)
+
+        return (W.value,objective_problem.constraints[0].violation(),objective_solution)
 
     # CVXPY Solution
-    w_basic, objective_solution = w_optimize()
+    v_diag = [1/8]*8
+    w_basic, constraint_violation, objective_solution = w_optimize(v_diag)
+
     print('\nObjective Value: ', objective_solution)
-    #print('\nObjective Value: ', objective_solution, '\n\nOptimal Weights: ', w_basic.T)
+
     solution_frame_1 = pd.DataFrame({'Region':control_units.region.unique(), 
-                           'Weights': np.round(w_basic.T[0], decimals=3)})
+                               'Weights': np.round(w_basic.T[0], decimals=3)})
 
-    return display(solution_frame_1)
+    display(solution_frame_1.transpose())
+    return w_basic
 
+    
+    
+
+    
+def data_compare_df(w_basic, X0, X1):
+    """Outputs a dataframe to show predicted versus actual values of variables"""
+    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
+    w_becker = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4303541, 0.4893414, 0.0803045]).reshape(15,1)
+    v_pinotti = [0.464413137,0.006141563,0.464413137,0.006141563,0.013106925,0.006141563,0.033500548,0.006141563]
+    v_becker  = [0,0.000000005,0,0.499999948,0.000000088,0.499999948,0.000000005,0.000000005]
+
+    ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
+    x_pred_pinotti = (X0 @ w_pinotti)
+    x_pred_basic = (X0 @ w_basic)
+
+    pred_error_pinotti = x_pred_pinotti - X1
+    pred_error_basic = x_pred_basic - X1
+
+    data_compare = pd.DataFrame({'Observed':X1.T[0],
+                                 'Pinotti Predicted':x_pred_pinotti.T[0],
+                                 'Optimizer Predicted':x_pred_basic.T[0],
+                                 'Pinotti Differential': pred_error_pinotti.T[0],
+                                 'Optimizer Differential': pred_error_basic.T[0]},
+                                  index= ['GDP per Capita','Investment Rate','Industry VA','Agriculture VA',
+                                          'Market Services VA','Non-market Services VA','Human Capital',
+                                          'Population Density'])
+
+    #print ('\nBreakdown across predictors:')
+
+    display(data_compare)
+    return w_pinotti, w_becker
     
     
 
     
 
-def dynamic_graph_1(y_control_all, y_treat_all, data):
+def dynamic_graph_1(w_basic, w_pinotti, w_becker, y_control_all, y_treat_all, data):
     
     """ Plots Figure 3.1: Synthetic Control Optimizer vs. Treated unit 
         for CVXPY initial optimizer, Pinotti, Becker and Klößner against the treated unit outcomes """
-    
-    dtafile = './dataset/Pinotti-replication/dataset.dta'
-    data = pd.read_stata(dtafile)
-    
-    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
-    w_becker = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4303541, 0.4893414, 0.0803045]).reshape(15,1)
-    w_basic = np.array([0., 0., 0., 0., 0.15165999, 0., 0., 0., 0., 0., 0., 0., 0., 0.84834001, 0.]).reshape(15,1)
-
     y_synth_pinotti = w_pinotti.T @ y_control_all
     y_synth_becker = w_becker.T @ y_control_all
     y_synth_basic = w_basic.T @ y_control_all
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=list(data.year.unique()), y=y_synth_basic[0],
-                    mode='lines', name='Optimizer'))
+                        mode='lines', name='Optimizer'))
     fig.add_trace(go.Scatter(x=list(data.year.unique()), y=y_synth_pinotti[0],
-                    mode='lines', name='Pinotti'))
+                        mode='lines', name='Pinotti'))
     fig.add_trace(go.Scatter(x=list(data.year.unique()), y=y_synth_becker[0],
-                    mode='lines', name='Becker and Klößner'))
+                        mode='lines', name='Becker and Klößner'))
     fig.add_trace(go.Scatter(x=list(data.year.unique()), y=y_treat_all[0],
-                    mode='lines', name='Treated unit'))
+                        mode='lines', name='Treated unit'))
 
     fig.add_shape(dict(type="line", x0=1960, y0=0, x1=1960, y1=11000,
-                   line=dict(color="Black", width=1)))
+                       line=dict(color="Black", width=1)))
 
     fig.add_shape(dict(type="line", x0=1974, y0=0, x1=1974, y1=11000,
-                   line=dict(color="Black", width=1)))
+                       line=dict(color="Black", width=1)))
 
     fig.add_shape(dict(type="line", x0=1980, y0=0, x1=1980, y1=11000,
-                   line=dict(color="Black", width=1)))
+                       line=dict(color="Black", width=1)))
 
     fig.add_trace(go.Scatter(x=[1960], y=[12000], mode="text",
-         name="Matching", text=["End of Matching<br>Period"]))
-  
+        name="Matching", text=["End of Matching<br>Period"]))
+
     fig.add_trace(go.Scatter(x=[1974], y=[12000], mode="text",
-         name="Event 1", text=["Drug<br>Smuggling"]))
+        name="Event 1", text=["Drug<br>Smuggling"]))
 
     fig.add_trace(go.Scatter(x=[1981], y=[12000], mode="text",
-         name="Event 2", text=["Basilicata<br>Earthquake"]))
+        name="Event 2", text=["Basilicata<br>Earthquake"]))
 
-    fig.update_layout(title='Figure 3.1: Synthetic Control Optimizer vs. Treated unit',
-                   xaxis_title='Time', yaxis_title='GDP per Capita')
+    fig.update_layout(title='Fig. 3.1: Treated Unit vs Synthetic Controls with different region weights',
+                       xaxis_title='Time', yaxis_title='GDP per Capita')
 
-    return fig.show()
-
+    # Dynamic graph
+    fig.show()
     
     
 
     
 
-def RMSPE_compare_1(Z1, Z0):
+def RMSPE_compare_df(Z1, Z0, w_basic, w_pinotti, w_becker):
     
     """ Defines function for Root Mean Squared Prediction Error (RMSPE)
         and generates dataframe for RMSPE values comparison between CVXPY output, Pinotti, Becker """
-    
-    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
-    w_becker = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4303541, 0.4893414, 0.0803045]).reshape(15,1)
-    w_basic = np.array([0., 0., 0., 0., 0.15165999, 0., 0., 0., 0., 0., 0., 0., 0., 0.84834001, 0.]).reshape(15,1)
-    
+
     # Function to obtain RMSPE
     def RMSPE(w):
         return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
@@ -171,36 +192,9 @@ def RMSPE_compare_1(Z1, Z0):
     RMSPE_values = [RMSPE(w_basic), RMSPE(w_pinotti), RMSPE(w_becker)]
     method = ['RMSPE CVXPY','RMSPE Pinotti','RMSPE Becker']
     RMSPE_compare = pd.DataFrame({'Outcome':RMSPE_values}, index=method)
-    return display(RMSPE_compare)
-
     
-    
+    display(RMSPE_compare)
 
-    
-
-def table_predicted_actual(X1, X0):
-    
-    """ Dataframe to show predicted vs. actual values of variables """
-    
-    dtafile = './dataset/Pinotti-replication/dataset.dta'
-    data = pd.read_stata(dtafile)
-    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
-    w_basic = np.array([0., 0., 0., 0., 0.15165999, 0., 0., 0., 0., 0., 0., 0., 0., 0.84834001, 0.]).reshape(15,1)
-    
-    x_pred_pinotti = (X0 @ w_pinotti)
-    x_pred_basic = (X0 @ w_basic)
-
-    pred_error_pinotti = x_pred_pinotti - X1
-    pred_error_basic = x_pred_basic - X1
-
-    data_compare = pd.DataFrame({'Observed':X1.T[0],
-                             'Pinotti Predicted':x_pred_pinotti.T[0],
-                             'Optimizer Predicted':x_pred_basic.T[0],
-                             'Pinotti Differential': pred_error_pinotti.T[0],
-                             'Optimizer Differential': pred_error_basic.T[0]},
-                              index= data.columns[[3,16,11,12,13,14,26,28]])
-
-    return display(data_compare)
 
     
     
@@ -208,74 +202,60 @@ def table_predicted_actual(X1, X0):
     
 
 ##############################
-##   CVXPY implementation   ##   leave it the main notebook
+##   CVXPY implementation   ##   leave it the main notebook?
 ##############################
 
-n = 100000
-
-def CVXPY_iterative(n, X0, X1, Z0, Z1, control_units, dtafile):
+def CVXPY_iterative(X0, X1,):
     
     """ CVXPY iterative implementation 
-        Approach 1: Iterating over the solution set by generating  𝑉  from a Dirichlet distribution"""
-
+        Approach 1: Iterating over a subset of V"""
+    
+    initial_w = [0]*15
+    bnds = ((0, 1),)*15
+    objective_constraint = ({'type': 'eq', 'fun': lambda x: 1.0 -  np.sum(x)})   ## constraint
     iteration_2 = []
 
-    data = pd.read_stata(dtafile)
-    
-    def w_optimize(v=None):
-        V = np.zeros(shape=(8, 8))
-        if v is None:
-            np.fill_diagonal(V, [1/8]*8)
-        else:
-            np.fill_diagonal(V, v)
-        
-        W = cp.Variable((15, 1), nonneg=True) ## Creates a 15x1 positive nonnegative variable
-        objective_function    = cp.Minimize(cp.sum(V @ cp.square(X1 - X0 @ W)))
-        objective_constraints = [cp.sum(W) == 1]
-        objective_solution    = cp.Problem(objective_function, objective_constraints).solve(verbose=False)
-    
-        return (W.value,objective_solution)
-    
-    def RMSPE(w):
-        return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
-
-    def f(x):
-        np.random.seed(x)
-        v_diag  = np.random.dirichlet(np.ones(8), size=1)
-        w_cvxpy = w_optimize(v_diag)[0]
-        print(w_cvxpy.shape)
-        prediction_error =  RMSPE(w_cvxpy) 
-        output_vec = [prediction_error, v_diag, w_cvxpy]
-        return output_vec
-    
-    iteration_2 = Parallel(n_jobs=-1)(delayed(f)(x) for x in list(range(1,n+1)))
     # Function to run in parallel 
         ## use Parallel() to save time
         ## n_jobs=-1 -> all CPU used
         ## delayed(f)(x) for x in list(range(1,n+1))  -> computes function f in parallel, for var x from 1 to n+1
 
+    def objective_function(W,X1,X0,v_diag):    ## function we want to min
+        V = np.zeros(shape=(8, 8))
+        np.fill_diagonal(V,v_diag)
+        obj_value = LA.norm(V @ (X1.ravel() - X0 @ W))
+        return obj_value
 
-    """ Organize output of CVXPY into dataframe """
-    
+    def iterate_function(x):
+
+        np.random.seed(x)                   ## deterministic random number generation by setting seed
+        v_diag  = np.random.dirichlet(np.ones(8), size=1)
+
+        w_ECOS,  csv_ECOS   = w_optimize(v_diag,solver=cp.ECOS)[0:2]
+        w_SCS,   csv_SCS    = w_optimize(v_diag,solver=cp.SCS)[0:2]
+        w_CPLEX, csv_CPLEX  = w_optimize(v_diag,solver=cp.CPLEX)[0:2]
+
+        w_SLSQP = optimize.minimize(objective_function,initial_w,args=(X1,X0,v_diag),method='SLSQP',bounds=bnds,
+                            constraints=objective_constraint,tol=1e-10,options={'disp': False}).x.reshape(15,1)
+
+            ## optimize.minimize(objective, initial guess, arguments, 'SLSPQ'=sequential least squares programming,
+            ##                  bounds, constraints, tolerance, )
+
+        RMSPE_ECOS    = RMSPE(w_ECOS) 
+        RMSPE_SCS     = RMSPE(w_SCS) 
+        RMSPE_SLSQP   = RMSPE(w_SLSQP)
+        RMSPE_CPLEX   = RMSPE(w_CPLEX)
+
+        output_vec  = [v_diag, RMSPE_ECOS,RMSPE_SCS,RMSPE_CPLEX,RMSPE_SLSQP,w_ECOS,w_SCS,w_CPLEX,w_SLSQP,
+                      csv_ECOS,csv_SCS,csv_CPLEX]
+
+        return output_vec
+
+    iteration_2 = Parallel(n_jobs=-1)(delayed(iterate_function)(x) for x in list(range(1,n+1)))
     solution_frame_2 = pd.DataFrame(iteration_2)
-    solution_frame_2.columns =['Error', 'Relative Importance', 'Weights']
-
-    solution_frame_2 = solution_frame_2.sort_values(by='Error', ascending=True)
-
-    w_cvxpy = solution_frame_2.iloc[0][2]
-    v_cvxpy = solution_frame_2.iloc[0][1][0]
-
-    best_weights_region = pd.DataFrame({'Region':control_units.region.unique(),
-                                    'W(V*)': np.round(w_cvxpy.ravel(), decimals=3)})
-
-    best_weights_importance = pd.DataFrame({'Predictors': data.columns[[3,16,11,12,13,14,26,28]],
-                                        'V*': np.round(v_cvxpy, 3)})
-
-    display(best_weights_region)
-    display(best_weights_importance)
-    
-    return (w_cvxpy, v_cvxpy)
-    
+    solution_frame_2.columns =['Predictor Importance', 'RMSPE ECOS','RMSPE SCS','RMSPE CPLEX','RMSPE SLSQP',
+                               'ECOS Weights', 'SCS Weights', 'CPLEX Weights', 'SLSQP Weights',
+                               'ECOS Violation', 'SCS Violation', 'CPLEX Violation']    
     """ side by side dataframes display attempt 
     Use HTML+CSS ??? https://python.engineering/38783027-jupyter-notebook-display-two-pandas-tables-side-by-side/
     """

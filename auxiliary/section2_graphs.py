@@ -75,7 +75,7 @@ def mafia_presence_avg(df2):
 
 def murder_rate_graphs(df3, df2):
     """ Plots Figure 2.2: Murder rate time series plot 1956-2007 
-        and   Figure 2.3: Organized Crime and Averge Murder 1983-2007 """
+        and   Figure 2.3: Organised Crime and Averge Murder 1983-2007 """
 
     color = np.where((df2['reg'] == 15) | (df2['reg'] == 18) | (df2['reg'] == 19), 'midnightblue',           # EXCLUDED
                      np.where((df2['reg'] == 16) | (df2['reg'] == 17), 'mediumslateblue',                    # TREATED
@@ -93,7 +93,7 @@ def murder_rate_graphs(df3, df2):
     ax2 = df2.plot.scatter('mafia', 'murd', c = color, s = 10, linewidth = 3, 
                        xlabel = 'Mafia Allegations ex Art. 416-bis × 100,000 Inhabitants', 
                        ylabel = 'Homicides x 100,000 Inhabitants', 
-                       ylim = [0,7], xlim = [0,2.1], title = 'Figure 2.3: Organized Crime and Averge Murder 1983-2007', ax = axes[1])
+                       ylim = [0,7], xlim = [0,2.1], title = 'Figure 2.3: Organised Crime and Averge Murder 1983-2007', ax = axes[1])
     n = ['Basilicata', 'Calabria','Campania','Apulia','Sicily']
     j, z = 0, [1, 2, 3, 16, 18]
     for i in z:
