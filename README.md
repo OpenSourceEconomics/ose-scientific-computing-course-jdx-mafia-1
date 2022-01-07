@@ -28,7 +28,7 @@ A final point of departure is the examination of a conflicting result by Becker 
 
 
 ## Repository guide
-We recommend running the repository locally using Jupyter Notebooks. A number of packages and libraries are used throughout the notebook, a fll list with links to the respective online documentation is made available in the opening section of the notebook as well as in the "environment.yml" file.
+We recommend running the repository locally using Jupyter Notebooks. A number of packages and libraries are used throughout the notebook, a full list with links to the respective online documentation is made available in the opening section of the notebook as well as in the "environment.yml" file.
 
 The "auxiliary" folder contains .py files with code used in the main notebook, these files are organised according to the section of the notebook in which they are used. The "dataset" folder provides the original dataset provided by Pinotti himself. 
 
