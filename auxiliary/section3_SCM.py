@@ -7,28 +7,24 @@
         - dataframes for RMSPE and outputs """
 
 # All notebook dependencies:
+import cvxpy as cp
 import numpy as np
 import pandas as pd
-import cvxpy as cp
 import numpy.linalg as LA
 import statsmodels.api as sm
 import plotly.graph_objs as go
+from qpsolvers import solve_qp
 import matplotlib.pyplot as plt
 import scipy.optimize as optimize
-import statsmodels.formula.api as smf
 from joblib import Parallel, delayed
+import statsmodels.formula.api as smf
 from scipy.optimize import differential_evolution, NonlinearConstraint, Bounds
-
-
 
 
 def data_prep_1(data):
     
     """ Specify conditions for treated unit and control units as per Pinotti's paper (c.f. F216), 
         where 21 are regions "NEW" with recent mafia presence: Apulia and Basilicata """
-    
-    dtafile = './dataset/Pinotti-replication/dataset.dta'
-    data = pd.read_stata(dtafile)
     
     treat_unit     = data[data.reg == 21]
     treat_unit     = treat_unit[treat_unit.year <= 1960]                 # Matching period: 1951 to 1960
@@ -61,13 +57,15 @@ def data_prep_1(data):
     X1 = X.loc[(X.index == 21),(predictor_variables)]
     X1 = X1.groupby(X1.index).mean().values.T
     
-    return (treat_unit, treat_unit_all, control_units, control_units_all, y_treat, y_treat_all, y_control, y_control_all, Z1, Z0, X0, X1)
+    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
+    w_becker = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4303541, 0.4893414, 0.0803045]).reshape(15,1)
+    v_pinotti = [0.464413137,0.006141563,0.464413137,0.006141563,0.013106925,0.006141563,0.033500548,0.006141563]
+    v_becker  = [0,0.000000005,0,0.499999948,0.000000088,0.499999948,0.000000005,0.000000005]
+    
+    return (treat_unit, treat_unit_all, control_units, control_units_all, y_treat, y_treat_all, y_control, y_control_all, Z1,        Z0, X0, X1, w_pinotti, w_becker, v_pinotti, v_becker)
 
     
     
-
-    
-
 def cvxpy_basic_solution(control_units, X0, X1):
     
     """Initial CVXPY setup: defines function to call and output a vector of weights function """
@@ -97,16 +95,9 @@ def cvxpy_basic_solution(control_units, X0, X1):
     display(solution_frame_1.transpose())
     return w_basic
 
-    
-    
-
-    
-def data_compare_df(w_basic, X0, X1):
+      
+def data_compare_df(w_basic, X0, X1, w_pinotti):
     """Outputs a dataframe to show predicted versus actual values of variables"""
-    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
-    w_becker = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4303541, 0.4893414, 0.0803045]).reshape(15,1)
-    v_pinotti = [0.464413137,0.006141563,0.464413137,0.006141563,0.013106925,0.006141563,0.033500548,0.006141563]
-    v_becker  = [0,0.000000005,0,0.499999948,0.000000088,0.499999948,0.000000005,0.000000005]
 
     ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
     x_pred_pinotti = (X0 @ w_pinotti)
@@ -127,11 +118,7 @@ def data_compare_df(w_basic, X0, X1):
     #print ('\nBreakdown across predictors:')
 
     display(data_compare)
-    return w_pinotti, w_becker
-    
-    
 
-    
 
 def dynamic_graph_1(w_basic, w_pinotti, w_becker, y_control_all, y_treat_all, data):
     
@@ -169,15 +156,12 @@ def dynamic_graph_1(w_basic, w_pinotti, w_becker, y_control_all, y_treat_all, da
     fig.add_trace(go.Scatter(x=[1981], y=[12000], mode="text",
         name="Event 2", text=["Basilicata<br>Earthquake"]))
 
-    fig.update_layout(title='Fig. 3.1: Treated Unit vs Synthetic Controls with different region weights',
+    fig.update_layout(title='Fig. 3: Treated Unit vs Synthetic Controls with different region weights',
                        xaxis_title='Time', yaxis_title='GDP per Capita')
 
     # Dynamic graph
     fig.show()
-    
-    
-
-    
+      
 
 def RMSPE_compare_df(Z1, Z0, w_basic, w_pinotti, w_becker):
     
@@ -196,303 +180,222 @@ def RMSPE_compare_df(Z1, Z0, w_basic, w_pinotti, w_becker):
     display(RMSPE_compare)
 
 
-    
-    
-
-    
 
 ##############################
-##   CVXPY implementation   ##   leave it the main notebook?
+##   Iterative implementation   ##  
 ##############################
 
-def CVXPY_iterative(X0, X1,):
-    
+def V_iterative(solution_frame_2,control_units):
+
     """ CVXPY iterative implementation 
-        Approach 1: Iterating over a subset of V"""
+    Approach 1: Iterating over a subset of V"""
+
+    class Solution:
+        def solve(self, nums):
+            if not nums:
+                return []
+            j=nums[0]
+            nums[0]=nums[0]
+            for i in range(1,len(nums)):
+                k=nums[i]
+                nums[i]=j
+                j=min(j,k)
+            return nums
+
+    ob = Solution()
+    ECOS_min  = ob.solve(list(solution_frame_2['RMSPE ECOS'].values))
+    SCS_min   = ob.solve(list(solution_frame_2['RMSPE SCS'].values))
+    CPLEX_min = ob.solve(list(solution_frame_2['RMSPE CPLEX'].values))
+    SLSQP_min = ob.solve(list(solution_frame_2['RMSPE SLSQP'].values))
+
+    figure, axes = plt.subplots(1, 2,figsize=(10,5))
+    ax1 = axes[0]
+    ax2 = axes[1]
+
+    ax1.plot(ECOS_min,label = 'ECOS')
+    ax1.plot(SCS_min,label = 'SCS')
+    ax1.plot(CPLEX_min,label = 'CPLEX')
+    ax1.plot(SLSQP_min,label = 'SLSQP')
+    ax1.set_xlabel('Iterations')
+    ax1.set_ylabel('Value of Outer Objective Function')
+    ax1.set_ylim(129.75,133)  
+
+    ax1.title.set_text('Fig 4(a) Convergence of  RMSPE')
+    ax1.legend(loc = 'upper center', bbox_to_anchor = (0.5, -0.13), shadow = True, ncol = 4)
+
+    methods = ['ECOS', 'SCS', 'CPLEX']
+    violations = [solution_frame_2['ECOS Violation'].mean(),
+    solution_frame_2['SCS Violation'].mean(),
+    solution_frame_2['CPLEX Violation'].mean()]
+    ax2.set_yscale("log")
+    ax2.bar(methods,violations,color=['blue', 'orange','green'])
+
+    ax2.set_xlabel('Methods')
+    ax2.set_ylabel('Constraint Violation')
+    ax2.set_ylim(10**-15,10**-2)
+    ax2.title.set_text('Fig 4(b) Average Constraint Violation')
+
+    plt.show()
     
-    initial_w = [0]*15
-    bnds = ((0, 1),)*15
-    objective_constraint = ({'type': 'eq', 'fun': lambda x: 1.0 -  np.sum(x)})   ## constraint
-    iteration_2 = []
+    sorted_df = solution_frame_2.sort_values(by='RMSPE ECOS', ascending=True)
 
-    # Function to run in parallel 
-        ## use Parallel() to save time
-        ## n_jobs=-1 -> all CPU used
-        ## delayed(f)(x) for x in list(range(1,n+1))  -> computes function f in parallel, for var x from 1 to n+1
+    w_ECOS  = sorted_df.iloc[0][5]
+    w_SCS   = sorted_df.iloc[0][6]
+    w_CPLEX = sorted_df.iloc[0][7]
+    w_SLSQP = sorted_df.iloc[0][8]
 
-    def objective_function(W,X1,X0,v_diag):    ## function we want to min
-        V = np.zeros(shape=(8, 8))
-        np.fill_diagonal(V,v_diag)
-        obj_value = LA.norm(V @ (X1.ravel() - X0 @ W))
-        return obj_value
+    best_weights_region = pd.DataFrame({'ECOS'  : np.round(w_ECOS.ravel(), decimals=3),
+                                        'SCS'   : np.round(w_SCS.ravel(), decimals=3),
+                                        'SLSQP' : np.round(w_SLSQP.ravel(), decimals=3),
+                                        'CPLEX' : np.round(w_CPLEX.ravel(), decimals=3)},
+                                         index  = control_units.region.unique())
 
-    def iterate_function(x):
+    best_weights_predictor = pd.DataFrame({'v*': np.round(sorted_df.iloc[0][0].ravel(),decimals=3)},
+                                  index= ['GDP per Capita','Investment Rate','Industry VA','Agriculture VA',
+                                          'Market Services VA','Non-market Services VA','Human Capital',
+                                          'Population Density'])
 
-        np.random.seed(x)                   ## deterministic random number generation by setting seed
-        v_diag  = np.random.dirichlet(np.ones(8), size=1)
+    display(best_weights_predictor.T)
 
-        w_ECOS,  csv_ECOS   = w_optimize(v_diag,solver=cp.ECOS)[0:2]
-        w_SCS,   csv_SCS    = w_optimize(v_diag,solver=cp.SCS)[0:2]
-        w_CPLEX, csv_CPLEX  = w_optimize(v_diag,solver=cp.CPLEX)[0:2]
-
-        w_SLSQP = optimize.minimize(objective_function,initial_w,args=(X1,X0,v_diag),method='SLSQP',bounds=bnds,
-                            constraints=objective_constraint,tol=1e-10,options={'disp': False}).x.reshape(15,1)
-
-            ## optimize.minimize(objective, initial guess, arguments, 'SLSPQ'=sequential least squares programming,
-            ##                  bounds, constraints, tolerance, )
-
-        RMSPE_ECOS    = RMSPE(w_ECOS) 
-        RMSPE_SCS     = RMSPE(w_SCS) 
-        RMSPE_SLSQP   = RMSPE(w_SLSQP)
-        RMSPE_CPLEX   = RMSPE(w_CPLEX)
-
-        output_vec  = [v_diag, RMSPE_ECOS,RMSPE_SCS,RMSPE_CPLEX,RMSPE_SLSQP,w_ECOS,w_SCS,w_CPLEX,w_SLSQP,
-                      csv_ECOS,csv_SCS,csv_CPLEX]
-
-        return output_vec
-
-    iteration_2 = Parallel(n_jobs=-1)(delayed(iterate_function)(x) for x in list(range(1,n+1)))
-    solution_frame_2 = pd.DataFrame(iteration_2)
-    solution_frame_2.columns =['Predictor Importance', 'RMSPE ECOS','RMSPE SCS','RMSPE CPLEX','RMSPE SLSQP',
-                               'ECOS Weights', 'SCS Weights', 'CPLEX Weights', 'SLSQP Weights',
-                               'ECOS Violation', 'SCS Violation', 'CPLEX Violation']    
-    """ side by side dataframes display attempt 
-    Use HTML+CSS ??? https://python.engineering/38783027-jupyter-notebook-display-two-pandas-tables-side-by-side/
-    """
-    #return display(best_weights_importance + best_weights_region) #FAIL: outputs NaN values
-
-    
-    
-
-    
-
-##############################
-##   scipy implementation   ##
-##############################
-
-def scipy_weights(n, X0, X1, Z0, Z1, control_units, dtafile):
-    
-    """ scipy implementation """
-    
-    data = pd.read_stata(dtafile)
-    
-    def RMSPE(w):
-        return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
-    
-    A = X0
-    b = X1.ravel()  ## .ravel() returns continuous flattened array [[a,b],[c,d]]->[a,b,c,d]
-    iteration_3 = []
-    init_w = [0]*15
-
-    bnds = ((0, 1),)*15
-    cons = ({'type': 'eq', 'fun': lambda x: 1.0 -  np.sum(x)})   ## constraint
-
-    def fmin(x,A,b,v):         ## function we want to min
-        c = np.dot(A, x) - b   ## np.dot(a,b) multiplies a and b => X0*x - X1
-        d = c ** 2
-        y = np.multiply(v,d)   ## y = v * (X0*x - X1)^2
-        return np.sum(y)
-    
-    
-    def g(x):
-    
-        np.random.seed(x)    ## deterministic random number generation by setting seed
-        v = np.random.dirichlet(np.ones(8), size=1).T
-        args = (A,b,v)
-        res = optimize.minimize(fmin,init_w,args,method='SLSQP',bounds=bnds,
-                            constraints=cons,tol=1e-10,options={'disp': False})
-        ## optimize.minimize(objective, initial guess, arguments, 'SLSPQ'=sequential least squares programming,
-        ##                   bounds, constraints, tolerance, )
-    
-        prediction_error =  RMSPE(res.x) 
-        output_vec = [prediction_error, v, res.x]
-        return output_vec
-    
-    iteration_3 = Parallel(n_jobs=-1)(delayed(g)(x) for x in list(range(1,n+1)))
+    display(best_weights_region.T)
 
     # Organize output into dataframe
-    solution_frame_3 = pd.DataFrame(iteration_3)
-    solution_frame_3.columns =['Error', 'Relative Importance', 'Weights']
-
-    solution_frame_3 = solution_frame_3.sort_values(by='Error', ascending=True)
-
-    w_scipy = solution_frame_3.iloc[0][2].reshape(15,1)
-    v_scipy = solution_frame_3.iloc[0][1].T[0]
-
-    best_weights_region2 = pd.DataFrame({'Region':control_units.region.unique(), 
-                                        'W(V*)': np.round(w_scipy.ravel(), decimals=3)})
-
-    best_weights_importance2 = pd.DataFrame({'Predictors': data.columns[[3,16,11,12,13,14,26,28]],
-                                            'V*': np.round(v_scipy, 3)})
-
-    display(best_weights_importance2)
-    display(best_weights_region2)
-    
-    return (w_scipy, v_scipy)
+    sorted_df = solution_frame_2.sort_values(by='RMSPE ECOS', ascending=True)
+    print("\noptimal value with SCS:  ",np.round(sorted_df.iloc[0][2],3), "| constraint violation: ", sorted_df.iloc[0][9])
+    print("optimal value with ECOS: ",np.round(sorted_df.iloc[0][1],3), "| constraint violation: ", sorted_df.iloc[0][10])
+    print("optimal value with CPLEX:",np.round(sorted_df.iloc[0][3],3), "| constraint violation: ", sorted_df.iloc[0][11])
+    print("optimal value with SLSQP:",np.round(sorted_df.iloc[0][4],3), "| constraint violation: n.a.")
 
     
     
-
-    
-
-def dynamic_graph_2(w_scipy, w_cvxpy, y_control_all, y_treat_all, dtafile):
-    
-    """ Dynamic plot for Figure 3.2: Synthetic Control Optimizer vs. Treated unit
-        Plots iterative CVXPY, scipy, Pinotti and Becker versus treated unit outcome """
-    
-    data = pd.read_stata(dtafile)
-    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
-    y_synth_scipy = w_scipy.T @ y_control_all
-    y_synth_cvxpy = w_cvxpy.T @ y_control_all
-    y_synth_pinotti = w_pinotti.T @ y_control_all
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=list(data.year.unique()), y=y_synth_cvxpy[0],
-                        mode='lines', name='Optimizer CVXPY'))
-    fig.add_trace(go.Scatter(x=list(data.year.unique()), y=y_synth_scipy[0],
-                        mode='lines', name='Optimizer SciPY'))
-    fig.add_trace(go.Scatter(x=list(data.year.unique()), y=y_synth_pinotti[0],
-                        mode='lines', name='Pinotti'))
-    fig.add_trace(go.Scatter(x=list(data.year.unique()), y=y_treat_all[0],
-                        mode='lines', name='Treated unit'))
-    fig.add_shape(dict(type="line", x0=1960, y0=0, x1=1960, y1=11000,
-                       line=dict(color="Black", width=1)))
-    
-    fig.add_trace(go.Scatter(x=[1960], y=[12000], mode="text",
-        name="Matching", text=["End of Matching<br>Period"]))
-
-    fig.update_layout(title='Figure 3.2: Synthetic Control Optimizer vs. Treated unit',
-                       xaxis_title='Time', yaxis_title='GDP per Capita')
-    fig.show()
-
-   
-    
-
-    
-    
-def RMSPE_compare2(w_cvxpy, w_scipy, Z1, Z0):
-    
-    """ Defines function for Root Mean Squared Prediction Error (RMSPE)
-        and generates dataframe for RMSPE values comparison between iterative CVXPY output, scipy and Pinotti """
-    
-    # Function to obtain Root Mean Squared Prediction Error (RMSPE)
-    def RMSPE(w):
-        return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
-    
-    # Dataframe to compare RMSPE values
-    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
-    RMSPE_values2 = [RMSPE(w_cvxpy), RMSPE(w_scipy), RMSPE(w_pinotti)]
-    method2 = ['RMSPE CVXPY','RMSPE scipy','RMSPE Pinotti']
-    RMSPE_compare2 = pd.DataFrame({'RMSE':RMSPE_values2}, index=method2)
-    display(RMSPE_compare2)
-    
-    #print('\nRMSPE CVXPY: {} \nRMSPE scipy: {} \nRMSPE Pinotti: {}'\
-    #      .format(RMSPE(w_cvxpy),RMSPE(w_scipy),RMSPE(w_pinotti)))
-
-    
-    
-
-    
-    
-
-
-    
-    
-
-    
-
-
-#######################################################
-##   CVXPY CODE, SETTINGS AND OUTPUT VISUALIZATION   ##
-#######################################################
-
-""" Approach 2: Nested Optimization: Combination of outer optimization ( 𝑊∗(𝑉) ) via Differential Evolution 
-    and inner optimization  (𝑊)  via CVXPY convex minimization """
-
-
-
-def data_prep_2(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
-              predictor_variables):
-    
-    """ Generates the necessary matrices and vectors to proceed with nested optimization """
-    
-    dtafile = './dataset/Pinotti-replication/dataset.dta'
-    data = pd.read_stata(dtafile)
+# Data Preparation Function with 8 arguments
+def data_prep(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
+              predictor_variables, normalize=False):
     
     X = data.loc[data[time_identifier].isin(matching_period)]
     X.index = X.loc[:,unit_identifier]
     
     X0 = X.loc[(X.index.isin(control_units)),(predictor_variables)] 
-    X0 = X0.groupby(X0.index).mean().values.T                         #control predictors
+    X0 = X0.groupby(X0.index).mean().values.T                        #control predictors
     
     X1 = X.loc[(X.index == treat_unit),(predictor_variables)]
-    X1 = X1.groupby(X1.index).mean().values.T                         #treated predictors
-
+    X1 = X1.groupby(X1.index).mean().values.T                        #treated predictors
+    
+    # outcome variable realizations in matching period -  Z0: control, Z1: treated
     Z0 = np.array(X.loc[(X.index.isin(control_units)),(outcome_variable)]).reshape(len(control_units),len(matching_period)).T  #control outcome
-    Z1 = np.array(X.loc[(X.index == treat_unit),(outcome_variable)]).reshape(len(matching_period),1)                           #treated outcome
+    Z1 = np.array(X.loc[(X.index == treat_unit),(outcome_variable)]).reshape(len(matching_period),1) #treated outcome
+    
+    if normalize == True:
+        # Scaling 
+        nvarsV = X0.shape[0]
+        big_dataframe = pd.concat([pd.DataFrame(X0), pd.DataFrame(X1)], axis=1)
+        divisor = np.sqrt(big_dataframe.apply(np.var, axis=1))
+        V = np.zeros(shape=(len(predictor_variables), len(predictor_variables)))
+        np.fill_diagonal(V, np.diag(np.repeat(big_dataframe.shape[0],1)))
+        scaled_matrix = ((big_dataframe.T) @ (np.array(1/(divisor)).reshape(len(predictor_variables),1) * V)).T
+
+        X0 = np.array(scaled_matrix.iloc[:,0:len(control_units)])
+        X1 = np.array(scaled_matrix.iloc[:,len(control_units):(len(control_units)+1)])
+
+        Z0 = Z0.astype('float64')
+        Z1 = Z1.astype('float64')
     
     return X0, X1, Z0, Z1
 
-
-
-
-
-
-def SCM(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
-              predictor_variables,reps = 1):
+def SCM_print(data,output_object,w_pinotti,Z1,Z0):
     
-    X0, X1, Z0, Z1 = data_prep_2(data,unit_identifier,time_identifier,matching_period,treat_unit,
+    # Organize output from SCM into dataframe
+    
+    def RMSPE(w):
+        return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
+
+    solution_frame_4 = output_object[0]
+    w_nested = output_object[1]
+    v_nested = output_object[2]
+    control_units = data[(data.reg <= 14) | (data.reg == 20)]
+
+    best_weights_region3 = pd.DataFrame({'Region':control_units.region.unique(), 
+                                    'W(V*)': np.round(w_nested.ravel(), decimals=3)})
+
+    best_weights_importance3 = pd.DataFrame({'v*': np.round(v_nested, 3)},
+                              index= ['GDP per Capita','Investment Rate','Industry VA','Agriculture VA',
+                                      'Market Services VA','Non-market Services VA','Human Capital',
+                                      'Population Density'])
+
+    display(best_weights_importance3.T)
+    display(best_weights_region3.T)
+
+    print('\nV* Constraint Violation: {} \nW*(V*) Constraint Violation:  {}'\
+      .format(1-sum(v_nested.ravel()), abs(1-sum(w_nested.ravel()))))
+
+    print('\nOptimizer Weights: {} \nPinotti Weights:  {}'\
+      .format(np.round(w_nested.T,3), np.round(w_pinotti,3).T))
+
+    print('\nRMSPE Nested:    {} \nRMSPE Pinotti:   {}'\
+      .format(np.round(RMSPE(w_nested),5), np.round(RMSPE(w_pinotti),5)))
+  
+    
+def SCM_v1(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
+              predictor_variables,reps=1,solver=cp.ECOS,seed=1):
+    
+    X0, X1, Z0, Z1 = data_prep(data,unit_identifier,time_identifier,matching_period,treat_unit,
                                control_units,outcome_variable,predictor_variables)
     
     #inner optimization
     def w_optimize(v):
-
+        V = np.zeros(shape=(len(predictor_variables), len(predictor_variables)))
+        np.fill_diagonal(V,v)
         W = cp.Variable((len(control_units), 1), nonneg=True)
-        objective_function    = cp.Minimize(cp.norm(cp.multiply(v, X1 - X0 @ W)))
+        objective_function    = cp.Minimize(cp.norm(V @ (X1 - X0 @ W)))
         objective_constraints = [cp.sum(W) == 1]
-        objective_solution    = cp.Problem(objective_function, objective_constraints).solve(verbose=False)
+        objective_problem     = cp.Problem(objective_function, objective_constraints)
+        objective_solution    = objective_problem.solve(solver)
         return (W.value)
     
     #outer optimization
     def vmin(v): 
-
         v = v.reshape(len(predictor_variables),1)
         W = w_optimize(v)
         return ((Z1 - Z0 @ W).T @ (Z1 - Z0 @ W)).ravel()
-
+    
+    # constraint on the sum of predictor weights.
     def constr_f(v):
         return float(np.sum(v))
 
+    # Setting Hessian to zero as advised by Diff Evolution to improve performance
     def constr_hess(x,v):
         v=len(predictor_variables)
         return np.zeros([v,v])
 
+    # Must also set Jacobian to zero when setting Hessian to avoid errors
     def constr_jac(v):
         v=len(predictor_variables)
         return np.ones(v)
-
-    def RMSPE_f(w):
+    
+    def RMSPE_f(w):          # RMSPE Calculator
         return np.sqrt(np.mean((w.T @ Z0.T - Z1.T)**2))
     
+    # Differential Evolution optimizes the outer objective function vmin()
     def v_optimize(i):
     
         bounds  = [(0,1)]*len(predictor_variables)
         nlc     = NonlinearConstraint(constr_f, 1, 1, constr_jac, constr_hess)
-        result  = differential_evolution(vmin, bounds, constraints=(nlc),seed=i,tol=0.01)
+        result  = differential_evolution(vmin, bounds, constraints=(nlc), seed=i)
         v_estim = result.x.reshape(len(predictor_variables),1)  
         return (v_estim)
     
+    # Function that brings it all together step-by-step
     def h(x):
     
-        v_estim1 = v_optimize(x)
-        w_estim1 = w_optimize(v_estim1)
+        v_estim1 = v_optimize(x)              # finding v* once Diff Evolution converges at default tolerance
+        w_estim1 = w_optimize(v_estim1)       # finding w*(v*)
         prediction_error = RMSPE_f(w_estim1)
         output_vec = [prediction_error, v_estim1, w_estim1]
         return output_vec
 
     iterations = []
-    iterations = Parallel(n_jobs=-1)(delayed(h)(x) for x in list(range(1,reps+1)))
-      
+    iterations = Parallel(n_jobs=-1)(delayed(h)(x) for x in list(range(seed,reps+seed))) # seed for replicability
+                                                                                         # can increase repititions
     solution_frame = pd.DataFrame(iterations)
     solution_frame.columns =['Error', 'Relative Importance', 'Weights']
     solution_frame = solution_frame.sort_values(by='Error', ascending=True)
@@ -500,18 +403,181 @@ def SCM(data,unit_identifier,time_identifier,matching_period,treat_unit,control_
     w_nested = solution_frame.iloc[0][2]
     v_nested = solution_frame.iloc[0][1].T[0]
     
-    output = [solution_frame,w_nested,v_nested,RMSPE_f(w_nested)]
+    output = [solution_frame,w_nested,v_nested,RMSPE_f(w_nested)]  # [all repititions, W*, V*, RMSPE]
     
     return output
 
 
 
-
-
-def settings():
+def global_feasible(Z1,Z0,w_cvxopt,L1_cvxopt,control_units,data,w_becker,v_OSQP,v_GUROBI,v_CPLEX,v_ECOS,v_SCS):
     
-    """ sets necessary parameters for SCM function, solution_output_SCM function and graphs in section 4 """
+    def RMSPE(w):
+        return np.sqrt(np.mean((Z1 - Z0 @ w)**2)) 
     
+    print('\nUnrestricted Global Optimum:')
+
+    control_units = data[(data.reg <= 14) | (data.reg ==20)]
+    best_weights_region4 = pd.DataFrame({'Region':control_units.region.unique(), 
+                                     'CVXOPT W**': np.round(w_cvxopt.ravel(), decimals=6),
+                                     'Becker and Klößner R/MSCMT W**': np.round(w_becker.ravel(), decimals=6)})
+    
+    display(best_weights_region4.T)
+    
+    print('\nCVXOPT W** Constraint Violation: {}'\
+          .format(1 - sum(w_cvxopt.ravel())))
+
+    print('\nRMSPE CVXOPT Optimizer:   {} \nRMSPE Becker and Klößner: {}'\
+          .format(np.round(RMSPE(w_cvxopt),5), np.round(RMSPE(w_becker),5)))
+    
+    print('\nFeasibility Check:')
+
+    best_weights_importance4 = pd.DataFrame({'OSQP V(W**)': np.round(v_OSQP, 3)},
+                                  index= ['GDP per Capita','Investment Rate','Industry VA','Agriculture VA',
+                                      'Market Services VA','Non-market Services VA','Human Capital',
+                                      'Population Density'])
+    
+    display(best_weights_importance4.T)
+
+    print('\nOSQP V* Constraint Violation:  {}  \nGUROBI V* Constraint Violation: {} \nCPLEX V* Constraint Violation: {}\
+          \nECOS V* Constraint Violation: {} \nSCS V* Constraint Violation: {}'\
+          .format(1 - sum(v_OSQP.ravel()), 1 - sum(v_GUROBI.ravel()), 1 - sum(v_CPLEX.ravel()), 
+                  1 - sum(v_ECOS.ravel()), 1 - sum(v_SCS.ravel())))
+
+    
+########    ######
+
+def SCM(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
+              predictor_variables,reps=1,solver=cp.ECOS,seed=1,check_global=False,normalize=False,dataprep=True,
+              x0=None,x1=None,z0=None,z1=None):
+    
+    def RMSPE(w):
+        return np.sqrt(np.mean((Z1 - Z0 @ w)**2)) 
+    
+    if dataprep == True:
+        X0, X1, Z0, Z1 = data_prep(data,unit_identifier,time_identifier,matching_period,treat_unit,
+                                   control_units,outcome_variable,predictor_variables,normalize=normalize)
+        
+    else:
+        X0, X1, Z0, Z1 = x0, x1, z0, z1
+        
+    #inner optimization
+    def w_optimize(v):
+        V = np.zeros(shape=(len(predictor_variables), len(predictor_variables)))
+        np.fill_diagonal(V,v)
+        W = cp.Variable((len(control_units), 1), nonneg=True)
+        objective_function    = cp.Minimize(cp.norm(V @ (X1 - X0 @ W)))
+        objective_constraints = [cp.sum(W) == 1]
+        objective_problem     = cp.Problem(objective_function, objective_constraints)
+        objective_solution    = objective_problem.solve(solver)
+        return (W.value)
+    
+    #outer optimization
+    def vmin(v): 
+        v = v.reshape(len(predictor_variables),1)
+        W = w_optimize(v)
+        return ((Z1 - Z0 @ W).T @ (Z1 - Z0 @ W)).ravel()
+    
+    # constraint on the sum of predictor weights.
+    def constr_f(v):
+        return float(np.sum(v))
+
+    # Setting Hessian to zero as advised by Diff Evolution to improve performance
+    def constr_hess(x,v):
+        v=len(predictor_variables)
+        return np.zeros([v,v])
+
+    # Must also set Jacobian to zero when setting Hessian to avoid errors
+    def constr_jac(v):
+        v=len(predictor_variables)
+        return np.ones(v)
+    
+    def RMSPE_f(w):          # RMSPE Calculator
+        return np.sqrt(np.mean((w.T @ Z0.T - Z1.T)**2))
+    
+    # Differential Evolution optimizes the outer objective function vmin()
+    def v_optimize(i):
+    
+        bounds  = [(0,1)]*len(predictor_variables)
+        nlc     = NonlinearConstraint(constr_f, 1, 1, constr_jac, constr_hess)
+        result  = differential_evolution(vmin, bounds, constraints=(nlc), seed=i)
+        v_estim = result.x.reshape(len(predictor_variables),1)  
+        return (v_estim)
+    
+    # Function that brings it all together step-by-step
+    def h(x):
+        
+        if check_global == True:
+            # Parameter Setup
+            Tpre     = Z0.shape[0] 
+            nDonors  = Z0.shape[1]
+            nvarsV   = X0.shape[0]
+
+            # Quadratic Programming setup
+            c1 = (-Z0.T @ Z1).reshape(nDonors,)
+            H1 = Z0.T @ Z0  
+            A1 = np.ones((nDonors,1)).reshape(nDonors,)
+            b1 = np.ones((1,1)).reshape(1,)
+            l1 = np.zeros((nDonors, 1)).reshape(nDonors,)
+            u1 = np.ones((nDonors, 1)).reshape(nDonors,)
+
+            # Quadratic Programming Execution: Outer Objective Function 
+            w_cvxopt = solve_qp(P = H1, q = c1, A = A1, b = b1, lb = l1, ub = u1, solver='cvxopt').reshape(nDonors,1)
+
+            L1_cvxopt = (Z0.T @ Z1)/Tpre + 2/Tpre * (c1.T @ w_cvxopt + 0.5 * w_cvxopt.T @ H1 @ w_cvxopt) 
+
+            V = cp.Variable((8, 1), nonneg=True)
+            objective_function    = cp.Minimize(cp.sum_squares(cp.multiply(V,X1 - X0 @ w_cvxopt)))
+            objective_constraints = [cp.sum(V) == 1]
+            objective_problem     = cp.Problem(objective_function, objective_constraints).solve(solver=cp.OSQP)
+            v_OSQP = V.value.ravel()
+            prediction_error = RMSPE(w_cvxopt)
+            output_vec = [prediction_error, v_OSQP, w_cvxopt]
+                
+        else:
+            v_estim1 = v_optimize(x)              # finding v* once Diff Evolution converges at default tolerance
+            w_estim1 = w_optimize(v_estim1)       # finding w*(v*)
+            prediction_error = RMSPE_f(w_estim1)
+            output_vec = [prediction_error, v_estim1, w_estim1]
+        
+        return output_vec
+
+    iterations = []
+    iterations = Parallel(n_jobs=-1)(delayed(h)(x) for x in list(range(seed,reps+seed))) # seed for replicability
+                                                                                         # can increase repititions
+    solution_frame = pd.DataFrame(iterations)
+    solution_frame.columns =['Error', 'Relative Importance', 'Weights']
+    solution_frame = solution_frame.sort_values(by='Error', ascending=True)
+
+    w_nested = solution_frame.iloc[0][2]
+    v_nested = solution_frame.iloc[0][1].T[0]
+    
+    output = [solution_frame,w_nested,v_nested,RMSPE_f(w_nested)]  # [all repititions, W*, V*, RMSPE]
+    
+    return output
+
+def numerical_instability(Z0,Z1,X0,X1,data,v_pinotti,v_becker,w_becker,w_pinotti):
+    
+    def RMSPE(w):
+        return np.sqrt(np.mean((Z1 - Z0 @ w)**2)) 
+    
+    Z0_float = Z0.astype('float64')
+    Z1_float = Z1.astype('float64')
+
+    nvarsV = X0.shape[0]
+    big_dataframe = pd.concat([pd.DataFrame(X0), pd.DataFrame(X1)], axis=1)
+    divisor = np.sqrt(big_dataframe.apply(np.var, axis=1))
+    V = np.zeros(shape=(8, 8))
+    np.fill_diagonal(V, np.diag(np.repeat(big_dataframe.shape[0],1)))
+    scaled_matrix = np.array(((big_dataframe.T) @ (np.array(1/(divisor)).reshape(8,1) * V)).T)
+
+    df_matrix = pd.DataFrame(scaled_matrix)
+    df_matrix.columns =['PIE', 'VDA', 'LOM', 'TAA', 'VEN', 'FVG', 'LIG', 'EMR', 'TOS',
+           'UMB', 'MAR', 'LAZ', 'ABR', 'MOL', 'SAR','NEW']
+
+    df_matrix.index = ['GDP per Capita','Investment Rate','Industry VA','Agriculture VA',
+                                          'Market Services VA','Non-market Services VA','Human Capital',
+                                          'Population Density']
+
     unit_identifier     = 'reg'
     time_identifier     = 'year'
     matching_period     = list(range(1951, 1961))
@@ -519,101 +585,76 @@ def settings():
     control_units       = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20]
     outcome_variable    = ['gdppercap']
     predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
-    reps                = 1
     entire_period       = list(range(1951, 2008))
-    return unit_identifier, time_identifier, matching_period, treat_unit, control_units, outcome_variable, predictor_variables, reps, entire_period
-
-
-
-
-
-
-
-def solution_output_SCM(data, output_object, Z0, Z1):
     
-    """ Builds dataframes to display the solution """
+    n = 20
+    weights_WV = []
+
+    def random_ordering(x):
+
+        np.random.seed(x)
+        df_shuffle = np.take(df_matrix,np.random.permutation(df_matrix.shape[0]),axis=0)
+        v_order    = list(df_shuffle.index)
+        X0_scaled  = np.array(df_shuffle.iloc[:,0:15])
+        X1_scaled  = np.array(df_shuffle.iloc[:,15:16])
+
+        output_object = SCM(data,unit_identifier,time_identifier,matching_period,treat_unit,
+                            control_units,outcome_variable,predictor_variables,dataprep=False,
+                            x0=X0_scaled,x1=X1_scaled,z0=Z0_float,z1=Z1_float)
+
+        output_vec  = [output_object[1],output_object[2],v_order]
+        return output_vec
+
+    weights_WV = Parallel(n_jobs=-1)(delayed(random_ordering)(x) for x in list(range(1,n+1)))
     
-    solution_frame_4 = output_object[0]
-    w_nested = output_object[1]
-    v_nested = output_object[2]
-    control_units = data[(data.reg <= 14) | (data.reg == 20)]
-    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
+    weights_WV_frame = pd.DataFrame(weights_WV)
+    v_weights = pd.DataFrame(weights_WV[0][1], index = weights_WV[0][2], columns=[0])
+    control_units = data[(data.reg <= 14) | (data.reg ==20)]
+    w_weights = pd.DataFrame(weights_WV[0][0], index = list(control_units.region.unique()), columns=[0])
 
+    for i in range(1,n):
+        v2 = pd.DataFrame(weights_WV[i][1], index = weights_WV[i][2], columns=[i])
+        v_weights = pd.merge(v_weights, v2, left_index=True, right_index=True)
 
-    best_weights_region3 = pd.DataFrame({'Region':control_units.region.unique(), 
-                                        'W(V*)': np.round(w_nested.ravel(), decimals=3)})
-
-    best_weights_importance3 = pd.DataFrame({'Predictors': data.columns[[3,16,11,12,13,14,26,28]],
-                                            'V*': np.round(v_nested, 3)})
-
-    display(best_weights_importance3)
-    display(best_weights_region3)
-
-    print('\nOptimizer Weights: {} \nPaper Weights:  {}'\
-          .format(np.round(w_nested.T,3), np.round(w_pinotti,3).T))
-
-    def RMSPE(w):
-        return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
-
-    print('\nRMSPE Nested:    {} \nRMSPE Pinotti:   {}'\
-          .format(np.round(RMSPE(w_nested),5), np.round(RMSPE(w_pinotti),5)))
-
-
+        w2 = pd.DataFrame(weights_WV[i][0], index = list(control_units.region.unique()), columns=[i])
+        w_weights = pd.merge(w_weights, w2, left_index=True, right_index=True)
     
-    
-############################################################################################################################################
+    v_weights = v_weights.reindex(['GDP per Capita','Investment Rate','Industry VA','Agriculture VA',
+                                      'Market Services VA','Non-market Services VA','Human Capital',
+                                      'Population Density'])
+
+    RMSPE_orders = pd.DataFrame(w_weights.apply(lambda x: np.sqrt(np.mean((Z1 - Z0 @ np.array(x).reshape(15,1))**2)),axis=0))
+
+    reorderingV_result  = pd.DataFrame({'Pinotti': np.round(v_pinotti,3),
+                                        'Becker': np.round(v_becker,3),
+                                       'Minimum': np.round(v_weights.min(axis=1).values,3),
+                                       'Mean': np.round(v_weights.mean(axis=1).values,3),
+                                       'Maximum':np.round(v_weights.max(axis=1).values,3)},
+                                          index= v_weights.index)
+
+    reorderingW_result  = pd.DataFrame({'Pinotti': np.round(w_pinotti[12:15].ravel(),3),
+                                        'Becker': np.round(w_becker[12:15].ravel(),3),
+                                       'Minimum': np.round(w_weights.min(axis=1).values[12:15],3),
+                                       'Mean': np.round(w_weights.mean(axis=1).values[12:15],3),
+                                       'Maximum':np.round(w_weights.max(axis=1).values[12:15],3)},
+                                          index= ['ABR','MOL','SAR'])
+
+    reorderingRMSPE_result  = pd.DataFrame({'Pinotti': RMSPE(w_pinotti),
+                                            'Becker': RMSPE(w_becker),
+                                       'Minimum': np.round(RMSPE_orders.min().values,3),
+                                       'Mean': np.round(RMSPE_orders.mean().values,3),
+                                       'Maximum':np.round(RMSPE_orders.max().values,3)},
+                                          index= ['RMSPE'])
+
+    display(pd.concat([reorderingV_result,reorderingW_result,reorderingRMSPE_result], axis=0))
 
 
-def global_optimum(Z1, Z0, X1, X0):
+def dynamic_graph_2(w_becker,w_pinotti,w_nested, y_control_all, y_treat_all, data):
     
-    """ Checks feasibility of unconstrained solution: unrestricted outer optimum in SECTION 3.4 """
-    
-    w_becker = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4303541, 0.4893414, 0.0803045]).reshape(15,1)
-    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
-    
-    W = cp.Variable((15, 1), nonneg=True)
-    objective_function    = cp.Minimize(np.mean(cp.norm(Z1 - Z0 @ W)))
-    objective_constraints = [cp.sum(W) == 1]
-    objective_solution    = cp.Problem(objective_function, objective_constraints).solve(verbose=False)
-
-    V = cp.Variable((8, 1), nonneg=True)
-    objective_function    = cp.Minimize(cp.norm(cp.multiply(V, X1 - X0 @ W.value)))
-    objective_constraints = [cp.sum(V) == 1]
-    objective_solution    = cp.Problem(objective_function, objective_constraints).solve(verbose=False)
-
-    v_global = V.value.ravel()
-    w_global = W.value
-
-    print('\nOptimizer Weights: {} \nOptimal Weights:  {}'\
-          .format(np.round(w_global.T,5), np.round(w_becker,5).T))
-    
-    def RMSPE(w):
-        return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
-
-    print('\nRMSPE Global:   {} \nRMSPE Becker:    {}'\
-          .format(np.round(RMSPE(w_global),6), np.round(RMSPE(w_becker),6)))
-    return (w_global, v_global)
-    
-    
-
-    
-
-
-def dynamic_graph_3(y_control_all, y_treat_all, output_object, dtafile):
-    
-    """ Dynamic plot of Figure 3.3: Synthetic Control Optimizer vs. Treated unit 
-        Plots nested CVXPY optimizer, Pinotti, Becker and Klößner versus treated unit outcome 
-        SECTION 3.5 """
-    
-    data = pd.read_stata(dtafile)
-    
-    w_becker = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4303541, 0.4893414, 0.0803045]).reshape(15,1)
-    w_pinotti = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6244443, 0.3755557, 0]).reshape(15, 1)
-    w_nested = output_object[1]
-    
-    
-    y_synth_becker = w_becker.T @ y_control_all
+    """ Dynamic plot for Figure 5: Synthetic Control Optimizer vs. Treated unit
+         Plots iterative CVXPY, scipy, Pinotti and Becker versus treated unit outcome """
     y_synth_pinotti = w_pinotti.T @ y_control_all
+    y_synth_becker = w_becker.T @ y_control_all
     y_synth_nested = w_nested.T @ y_control_all
 
     fig = go.Figure()
@@ -631,76 +672,61 @@ def dynamic_graph_3(y_control_all, y_treat_all, output_object, dtafile):
     fig.add_trace(go.Scatter(x=[1960], y=[12000], mode="text",
         name="Matching", text=["End of Matching<br>Period"]))
 
-    fig.update_layout(title='Figure 3.3: Synthetic Control Optimizer vs. Treated unit',
+    fig.update_layout(title='Fig 5: Synthetic Control Optimizer vs. Treated unit',
                        xaxis_title='Time', yaxis_title='GDP per Capita')
     fig.show()
 
     
-    
-
-    
-
-
-def matching_characteristics_table(X0, X1, w_global, predictor_variables, v_global, dtafile):
-    
-    """ Dataframe with matching period characteristics for Apulia and Basilicata, Synthetic Control, Control Units """
-    
-    data = pd.read_stata(dtafile)
-    v_pinotti = [0.006141563, 0.464413137, 0.006141563, 0.013106925, 0.006141563, 0.033500548, 0.006141563, 0.464413137]
-
+def table_comapre_2(w_nested,data,predictor_variables,v_nested,v_pinotti,X1,X0):   
+#      """ Dataframe with matching period characteristics for Apulia and Basilicata, Synthetic Control, Control Units """ 
+        
+    x_pred_global = (X0 @ w_nested).ravel()
     X = data.loc[data['year'].isin(list(range(1951, 1961)))]
-    X.index = X.loc[:,'reg']
-    
-    x_pred_global = (X0 @ w_global).ravel()
     control_stats = X.loc[(X.index <= 14) | (X.index ==20),
-                          (predictor_variables)].describe().drop(['count','25%', '50%','75%'], axis=0).T
+                      (predictor_variables)].describe().drop(['count','25%', '50%','75%'], axis=0).T
     control_stats = np.round(control_stats,2)
-    data_compare  = pd.DataFrame({'Global Opt Weights': np.round(v_global,3),
-                                  'Pinotti Weights': np.round(v_pinotti,3),
-                                  'Apulia and Basilicata':np.round(X1.T[0],3),
-                                  'Synthetic Control':x_pred_global},
-                               index= data.columns[[3,16,11,12,13,14,26,28]])
+    data_compare  = pd.DataFrame({'Global Opt Weights': np.round(v_nested,3),
+                              'Pinotti Weights': np.round(v_pinotti,3),
+                              'Apulia and Basilicata':np.round(X1.T[0],3),
+                              'Synthetic Control':x_pred_global},
+                           index= data.columns[[3,16,11,12,13,14,26,28]])
+    
     frames = [data_compare, control_stats]
     result = pd.concat(frames,axis=1)
-    #print ('\nMatching Period Characteristics: Apulia and Basilicata, Synthetic Control, Control Units')
+    print ('\nMatching Period Characteristics: Apulia and Basilicata, Synthetic Control, Control Units')
     display(result)
-
-    
     
 
     
-
-
-def diff_figure_4(control_units_all, treat_unit_all, y_control_all, y_treat_all, output_object, dtafile):
-    """ Generates Figure 3.4: Actual vs Synthetic Differences over time: GDP per capita and Murders.
-        Shows differences in evolution of murder rates and GDP per capita between the actual realizations of Apulia 
-        and Basilicata and the ones predicted by the synthetic control unit """
-    
-    data = pd.read_stata(dtafile)
+def diff_figure_2(w_nested,control_units_all,treat_unit_all,y_control_all,y_treat_all,data):
+#      """ Generates Fig 6: Actual vs Synthetic Differences over time: GDP per capita and Murders.
+#          Shows differences in evolution of murder rates and GDP per capita between the actual realizations of Apulia 
+#          and Basilicata and the ones predicted by the synthetic control unit """
+  
     murd_treat_all      = np.array(treat_unit_all.murd).reshape(1, 57)
     murd_control_all    = np.array(control_units_all.murd).reshape(15, 57)
-    w_nested = output_object[1]
     synth_murd = w_nested.T @ murd_control_all
+
     synth_gdp = w_nested.T @ y_control_all
+
     diff_GDP = (((y_treat_all-synth_gdp)/(synth_gdp))*100).ravel()
     diff_murder = (murd_treat_all - synth_murd).ravel()
-    diff_data = pd.DataFrame({'Murder Gap':diff_murder,
+
+    diff_data_0 = pd.DataFrame({'Murder Gap':diff_murder,
                              'GDP Gap': diff_GDP},
                              index=data.year.unique())
 
-    year = diff_data.index.values
+    year = diff_data_0.index.values
     fig, ax1 = plt.subplots()
-    color = 'tab:red'
     ax1.set_xlabel('Year')
     ax1.set_ylabel('GDP per capita, % Gap')
-    ax1.bar(year,diff_data['GDP Gap'],width = 0.5,label = 'GDP per capita')
+    ax1.bar(year,diff_data_0['GDP Gap'],width = 0.5,label = 'GDP per capita')
     ax1.axhline(0)
     ax1.tick_params(axis='y')
 
     ax2 = ax1.twinx()
-    color = 'tab:blue'
     ax2.set_ylabel('Murder Rate, Difference')
-    ax2.plot(diff_data['Murder Gap'],color='black',label = 'Murders')
+    ax2.plot(diff_data_0['Murder Gap'],color='black',label = 'Murders')
     ax2.axhline(0)
     ax2.tick_params(axis='y')
 
@@ -711,5 +737,29 @@ def diff_figure_4(control_units_all, treat_unit_all, y_control_all, y_treat_all,
     h2, l2 = ax2.get_legend_handles_labels()
     ax1.legend(h1+h2, l1+l2,loc = 'upper center', bbox_to_anchor = (0.5, -0.15), shadow = True, ncol = 2)
     fig.tight_layout() 
-    plt.title('Fig 3.4: Actual vs Synthetic Differences over time: GDP per capita and Murders')
+    plt.title('Fig 6: Actual vs Synthetic Differences over time: GDP per capita and Murders')
     plt.show()
+    
+    return diff_data_0
+    
+    
+# #######################################################
+# ##   CVXPY CODE, SETTINGS AND OUTPUT VISUALIZATION   ##
+# #######################################################
+
+# def settings():
+    
+#     """ sets necessary parameters for SCM function, solution_output_SCM function and graphs in section 4 """
+    
+#     unit_identifier     = 'reg'
+#     time_identifier     = 'year'
+#     matching_period     = list(range(1951, 1961))
+#     treat_unit          = 21
+#     control_units       = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20]
+#     outcome_variable    = ['gdppercap']
+#     predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
+#     reps                = 1
+#     entire_period       = list(range(1951, 2008))
+#     return unit_identifier, time_identifier, matching_period, treat_unit, control_units, outcome_variable, predictor_variables, reps, entire_period
+
+    

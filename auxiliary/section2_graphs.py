@@ -19,7 +19,7 @@ data = pd.read_stata(dtafile)
 
 
 
-def data_prep(frame_name):
+def plot_prep(frame_name):
     """ 
     Defines necesary dataframes for future plots.
     Args:
@@ -53,29 +53,30 @@ def data_prep(frame_name):
 
 def mafia_presence_avg(df2):
     """ 
-    Plots Figure 2.1: GDP per capita and mafia presence, 1983–2007 average
+    Plots Figure 1: GDP per capita and mafia presence, averaged over 1983–2007
     """
 
     color = np.where((df2['reg'] == 15) | (df2['reg'] == 18) | (df2['reg'] == 19), 'midnightblue',           # EXCLUDED
-                     np.where((df2['reg'] == 16) | (df2['reg'] == 17), 'mediumslateblue',                    # TREATED
-                     np.where((df2['reg'] <= 12) | (df2['reg'] == 20), 'salmon', 'none')))                   # THE REST
-    df2 = data_prep("df2") 
+                 np.where((df2['reg'] == 16) | (df2['reg'] == 17), 'mediumslateblue',                    # TREATED
+                 np.where((df2['reg'] <= 12) | (df2['reg'] == 20), 'salmon', 'none')))                   # THE REST
+
     df2.plot.scatter('mafia', 'gdppercap', c = color, s = 10, linewidth = 3, 
                  xlabel = 'Presence of mafia organisations', ylabel = 'GDP per capita', ylim = [7000,15000], xlim = [0,2.25],
-                 title = 'Figure 2.1: GDP per capita and mafia presence, 1983–2007 average')
+                 title = 'Figure 1: GDP per capita and mafia presence, averaged over 1983–2007')
     n = ['Basilicata', 'Calabria', 'Campania', 'Apulia', 'Sicily']
     j, z = 0, [1, 2, 3, 16, 18]
     for i in z:
         plt.annotate(n[j], (df2.mafia[i], df2.gdppercap[i]), xytext = (0,1), 
-                 textcoords = 'offset points', ha = 'left', va = 'bottom', rotation = 15)
+                     textcoords = 'offset points', ha = 'left', va = 'bottom', rotation = 24)
         j += 1
+        
     return plt.show()
     
 
 
 def murder_rate_graphs(df3, df2):
-    """ Plots Figure 2.2: Murder rate time series plot 1956-2007 
-        and   Figure 2.3: Organised Crime and Averge Murder 1983-2007 """
+    """ Plots Fig 2(a): Murder rate time series plot 1956-2007
+        and   Fig 2(b): Organized Crime and Murder 1983-2007 """
 
     color = np.where((df2['reg'] == 15) | (df2['reg'] == 18) | (df2['reg'] == 19), 'midnightblue',           # EXCLUDED
                      np.where((df2['reg'] == 16) | (df2['reg'] == 17), 'mediumslateblue',                    # TREATED
@@ -83,22 +84,26 @@ def murder_rate_graphs(df3, df2):
 
     figure, axes = plt.subplots(1, 2,figsize=(10,5))
 
+    ### Figure 2(a) ###
+
     ax1 = df3.plot(colormap = 'seismic', rot = 'vertical',
                xticks   = [1956,1960,1965,1970,1975,1980,1985,1990,1995,2000,2005,2010],
                yticks   = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9],
                xlabel   = 'Year', ylabel = 'Homicides x 100,000 Inhabitants', 
-               title    = 'Figure 2.2: Murder rate time series plot 1956-2007', ax = axes[0])
+               title    = 'Fig 2(a): Murder rate time series plot 1956-2007', ax = axes[0])
     ax1.legend(loc = 'upper center', bbox_to_anchor = (0.5, -0.22), shadow = True, ncol = 2)
+
+    ### Figure 2(b) ###
 
     ax2 = df2.plot.scatter('mafia', 'murd', c = color, s = 10, linewidth = 3, 
                        xlabel = 'Mafia Allegations ex Art. 416-bis × 100,000 Inhabitants', 
                        ylabel = 'Homicides x 100,000 Inhabitants', 
-                       ylim = [0,7], xlim = [0,2.1], title = 'Figure 2.3: Organised Crime and Averge Murder 1983-2007', ax = axes[1])
+                       ylim = [0,7], xlim = [0,2.1], title = 'Fig 2(b): Organized Crime and Murder 1983-2007', ax = axes[1])
     n = ['Basilicata', 'Calabria','Campania','Apulia','Sicily']
     j, z = 0, [1, 2, 3, 16, 18]
     for i in z:
         plt.annotate(n[j], (df2.mafia[i], df2.murd[i]), xytext = (0,1),
-                 textcoords = 'offset points', ha = 'left', va = 'bottom')
+                     textcoords = 'offset points', ha = 'left', va = 'bottom')
         j += 1
 
     plt.tight_layout()
