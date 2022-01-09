@@ -1,147 +1,113 @@
 """ Auxiliary code for section 4 of the main notebook """
 
-# All notebook dependencies
+# All notebook dependencies:
+import cvxpy as cp
 import numpy as np
 import pandas as pd
-import cvxpy as cp
 import numpy.linalg as LA
 import statsmodels.api as sm
 import plotly.graph_objs as go
+from qpsolvers import solve_qp
 import matplotlib.pyplot as plt
 import scipy.optimize as optimize
-import statsmodels.formula.api as smf
 from joblib import Parallel, delayed
+import statsmodels.formula.api as smf
 from scipy.optimize import differential_evolution, NonlinearConstraint, Bounds
 
+from auxiliary.section3_SCM import SCM
 
 
-def gdp_murder_plotter(data,treat_unit,control_units,region_weights,title1,ax1):
+def numerical_instability(Z0,Z1,X0,X1,data,v_pinotti,v_becker,w_becker,w_pinotti):
     
-    """ Function to plot graphs in multiplot() function used below.
-        Args info:
-            - title1 -> string"""
+    def RMSPE(w):
+        return np.sqrt(np.mean((Z1 - Z0 @ w)**2)) 
     
-    X3 = data.loc[data[time_identifier].isin(entire_period)]
-    X3.index = X3.loc[:,unit_identifier]
-    
-    murd_treat_all   = np.array(X3.loc[(X3.index == treat_unit),('murd')]).reshape(1,len(entire_period))
-    murd_control_all = np.array(X3.loc[(X3.index.isin(control_units)),('murd')]).reshape(len(control_units),len(entire_period))
-    gdp_control_all  = np.array(X3.loc[(X3.index.isin(control_units)),('gdppercap')]).reshape(len(control_units),len(entire_period))
-    gdp_treat_all    = np.array(X3.loc[(X3.index == treat_unit),('gdppercap')]).reshape(1,len(entire_period))
-    
-    synth_murd = region_weights.T @ murd_control_all
+    Z0_float = Z0.astype('float64')
+    Z1_float = Z1.astype('float64')
 
-    synth_gdp = region_weights.T @ gdp_control_all
+    nvarsV = X0.shape[0]
+    big_dataframe = pd.concat([pd.DataFrame(X0), pd.DataFrame(X1)], axis=1)
+    divisor = np.sqrt(big_dataframe.apply(np.var, axis=1))
+    V = np.zeros(shape=(8, 8))
+    np.fill_diagonal(V, np.diag(np.repeat(big_dataframe.shape[0],1)))
+    scaled_matrix = np.array(((big_dataframe.T) @ (np.array(1/(divisor)).reshape(8,1) * V)).T)
 
-    diff_GDP = (((gdp_treat_all-synth_gdp)/(synth_gdp))*100).ravel()
-    diff_murder = (murd_treat_all - synth_murd).ravel()
+    df_matrix = pd.DataFrame(scaled_matrix)
+    df_matrix.columns =['PIE', 'VDA', 'LOM', 'TAA', 'VEN', 'FVG', 'LIG', 'EMR', 'TOS',
+           'UMB', 'MAR', 'LAZ', 'ABR', 'MOL', 'SAR','NEW']
 
-    diff_data = pd.DataFrame({'Murder Gap':diff_murder,
-                             'GDP Gap': diff_GDP},
-                             index=data.year.unique())
+    df_matrix.index = ['GDP per Capita','Investment Rate','Industry VA','Agriculture VA',
+                                          'Market Services VA','Non-market Services VA','Human Capital',
+                                          'Population Density']
 
-    year = diff_data.index.values
-    ax1.bar(year,diff_data['GDP Gap'],width = 0.5,label = 'GDP per capita')
-    ax1.axhline(0)
-    ax1.title.set_text(title1)
-    ax1.tick_params(axis='y')
-
-    ax2 = ax1.twinx()
-    ax2.plot(diff_data['Murder Gap'],color='black',label = 'Murders')
-    ax2.axhline(0)
-    ax2.tick_params(axis='y')
-
-    plt.axvspan(1975, 1980, color='y', alpha=0.5, lw=0,label='Mafia Outbreak')
-    ax1.set_ylim(-30,30)
-    ax2.set_ylim(-4,4)
-    
-    
-    
-    
-""" SETTINGS ARE THE SAME AS IN settings() FUNCTION FROM SECTION 3"""
-unit_identifier = 'reg'
-time_identifier = 'year'
-matching_period = list(range(1951, 1961))
-control_units = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20]
-outcome_variable = ['gdppercap']
-predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
-entire_period = list(range(1951, 2008))
-reps=1
-
-
-
-
-
-def multiplot(SCM, data, unit_identifier, time_identifier, matching_period, treat_unit, control_units, outcome_variable, predictor_variables, reps, entire_period):
-    
-    """ Plots multiple graphs in a 3x3 grid using settings() function from auxiliary.section2_graphs """
-    
-    fig, fig_axes = plt.subplots(ncols=3, nrows=3,figsize=(10,10))
-
-    # Only Apulia in treatment group: Changes treat_unit to region number 16
-    treat_unit = 16
-    output_object = SCM(data,unit_identifier,time_identifier,matching_period,treat_unit,
-                        control_units,outcome_variable,predictor_variables,reps)
-    region_weights = output_object[1].reshape(15,1)
-
-    gdp_murder_plotter(data,treat_unit,control_units,region_weights,'(a) Only Apulia in treatment group',fig_axes[0,0])
-
-    # Only Basilicata in treatment group: Changes treat_unit to region number 17
-    treat_unit = 17
-    output_object = SCM(data,unit_identifier,time_identifier,matching_period,
-                        treat_unit,control_units,outcome_variable,predictor_variables,reps)
-    region_weights = output_object[1].reshape(15,1)
-
-    gdp_murder_plotter(data,treat_unit,control_units,region_weights,'(b) Only Basilicata in treatment group',fig_axes[0,1])
-
-    # No Molise in control group: Removes region 14 from control_unit
-    treat_unit = 21
-    control_units = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 20]
-
-    output_object = SCM(data,unit_identifier,time_identifier,matching_period,treat_unit,
-                        control_units,outcome_variable,predictor_variables,reps)
-    region_weights = output_object[1].reshape(14,1)
-
-    gdp_murder_plotter(data,treat_unit,control_units,region_weights,'(c) No Molise in control group',fig_axes[0,2])
-
-
-    # No Abruzzo in control group: Removes region 13 from control_unit
-    control_units = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 20]
-    output_object = SCM(data,unit_identifier,time_identifier,matching_period,
-                        treat_unit,control_units,outcome_variable,predictor_variables,reps)
-    region_weights = output_object[1].reshape(14,1)
-
-    gdp_murder_plotter(data,treat_unit,control_units,region_weights,'(d) No Abruzzo in control group',fig_axes[1,0])
-
-
-    # No Sardinia in control group: Removes region 20 from control_unit
-    control_units = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-    output_object = SCM(data,unit_identifier,time_identifier,matching_period,
-                        treat_unit,control_units,outcome_variable,predictor_variables,reps)
-    region_weights = output_object[1].reshape(14,1)
-
-    gdp_murder_plotter(data,treat_unit,control_units,region_weights,'(e) No Sardinia in control group',fig_axes[1,1])
-
-
-    # Include crimes in predictor variables: add variable 'robkidext' in predictor_variables
-    predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density','robkidext']
-    control_units = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20]
-    output_object = SCM(data,unit_identifier,time_identifier,matching_period,
-                        treat_unit,control_units,outcome_variable,predictor_variables,reps)
-    region_weights = output_object[1].reshape(15,1)
-
-    gdp_murder_plotter(data,treat_unit,control_units,region_weights,'(f) Include crimes in predictor variables',fig_axes[1,2])
-
-
-    # Match over 1951 to 1975: change matching_period from (1951,1961) to (1951, 1976)
+    unit_identifier     = 'reg'
+    time_identifier     = 'year'
+    matching_period     = list(range(1951, 1961))
+    treat_unit          = 21
+    control_units       = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20]
+    outcome_variable    = ['gdppercap']
     predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
-    matching_period = list(range(1951, 1976))
-    output_object = SCM(data,unit_identifier,time_identifier,matching_period,
-                        treat_unit,control_units,outcome_variable,predictor_variables,reps)
-    region_weights = output_object[1].reshape(15,1)
+    entire_period       = list(range(1951, 2008))
+    
+    n = 10
+    weights_WV = []
 
-    gdp_murder_plotter(data,treat_unit,control_units,region_weights,'(g) Matching period 1951-1975',fig_axes[2,0])
+    def random_ordering(x):
 
+        np.random.seed(x)
+        df_shuffle = np.take(df_matrix,np.random.permutation(df_matrix.shape[0]),axis=0)
+        v_order    = list(df_shuffle.index)
+        X0_scaled  = np.array(df_shuffle.iloc[:,0:15])
+        X1_scaled  = np.array(df_shuffle.iloc[:,15:16])
 
-    plt.tight_layout()
-    plt.show()
+        output_object = SCM(data,unit_identifier,time_identifier,matching_period,treat_unit,
+                            control_units,outcome_variable,predictor_variables,dataprep=False,
+                            x0=X0_scaled,x1=X1_scaled,z0=Z0_float,z1=Z1_float)
+
+        output_vec  = [output_object[1],output_object[2],v_order]
+        return output_vec
+
+    weights_WV = Parallel(n_jobs=-1)(delayed(random_ordering)(x) for x in list(range(1,n+1)))
+    
+    weights_WV_frame = pd.DataFrame(weights_WV)
+    v_weights = pd.DataFrame(weights_WV[0][1], index = weights_WV[0][2], columns=[0])
+    control_units = data[(data.reg <= 14) | (data.reg ==20)]
+    w_weights = pd.DataFrame(weights_WV[0][0], index = list(control_units.region.unique()), columns=[0])
+
+    for i in range(1,n):
+        v2 = pd.DataFrame(weights_WV[i][1], index = weights_WV[i][2], columns=[i])
+        v_weights = pd.merge(v_weights, v2, left_index=True, right_index=True)
+
+        w2 = pd.DataFrame(weights_WV[i][0], index = list(control_units.region.unique()), columns=[i])
+        w_weights = pd.merge(w_weights, w2, left_index=True, right_index=True)
+    
+    v_weights = v_weights.reindex(['GDP per Capita','Investment Rate','Industry VA','Agriculture VA',
+                                      'Market Services VA','Non-market Services VA','Human Capital',
+                                      'Population Density'])
+
+    RMSPE_orders = pd.DataFrame(w_weights.apply(lambda x: np.sqrt(np.mean((Z1 - Z0 @ np.array(x).reshape(15,1))**2)),axis=0))
+
+    reorderingV_result  = pd.DataFrame({'Pinotti (Synth)': np.round(v_pinotti,3),
+                                        'Becker (MSCMT)': np.round(v_becker,3),
+                                        'SCM/Minimum': np.round(v_weights.min(axis=1).values,3),
+                                        'SCM/Mean': np.round(v_weights.mean(axis=1).values,3),
+                                        'SCM/Maximum':np.round(v_weights.max(axis=1).values,3)},
+                                          index= v_weights.index)
+
+    reorderingW_result  = pd.DataFrame({'Pinotti (Synth)': np.round(w_pinotti[12:15].ravel(),3),
+                                        'Becker (MSCMT)': np.round(w_becker[12:15].ravel(),3),
+                                        'SCM/Minimum': np.round(w_weights.min(axis=1).values[12:15],3),
+                                        'SCM/Mean': np.round(w_weights.mean(axis=1).values[12:15],3),
+                                        'SCM/Maximum':np.round(w_weights.max(axis=1).values[12:15],3)},
+                                          index= ['ABR','MOL','SAR'])
+
+    reorderingRMSPE_result  = pd.DataFrame({'Pinotti (Synth)': RMSPE(w_pinotti),
+                                            'Becker (MSCMT)': RMSPE(w_becker),
+                                            'SCM/Minimum': np.round(RMSPE_orders.min().values,3),
+                                            'SCM/Mean': np.round(RMSPE_orders.mean().values,3),
+                                            'SCM/Maximum':np.round(RMSPE_orders.max().values,3)},
+                                          index= ['RMSPE'])
+    
+    reordered_table = pd.concat([reorderingV_result,reorderingW_result,reorderingRMSPE_result], axis=0)
+
+    display(reordered_table.round(3))
