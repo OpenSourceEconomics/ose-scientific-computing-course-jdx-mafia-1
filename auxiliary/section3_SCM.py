@@ -62,7 +62,7 @@ def data_prep_1(data):
     v_pinotti = [0.464413137,0.006141563,0.464413137,0.006141563,0.013106925,0.006141563,0.033500548,0.006141563]
     v_becker  = [0,0.018382899,0.778844583,0.013064060,0.013064060,0.013064060,0.150516278,0.013064060]
     
-    return (treat_unit, treat_unit_all, control_units, control_units_all, y_treat, y_treat_all, y_control, y_control_all, Z1,        Z0, X0, X1, w_pinotti, w_becker, v_pinotti, v_becker)
+    return (treat_unit, treat_unit_all, control_units, control_units_all, y_treat, y_treat_all, y_control, y_control_all, Z1, Z0, X0, X1, w_pinotti, w_becker, v_pinotti, v_becker)
 
     
     
@@ -121,7 +121,7 @@ def data_compare_df(w_basic, X0, X1, w_pinotti):
     display(data_compare)
 
 
-def dynamic_graph_1(w_basic, w_pinotti, w_becker, y_control_all, y_treat_all, data):
+def fig3_dynamic_graph(w_basic, w_pinotti, w_becker, y_control_all, y_treat_all, data):
     
     """ Plots Figure 3.1: Synthetic Control Optimizer vs. Treated unit 
         for CVXPY initial optimizer, Pinotti, Becker and Klößner against the treated unit outcomes """
@@ -182,14 +182,19 @@ def RMSPE_compare_df(Z1, Z0, w_basic, w_pinotti, w_becker):
 
 
 
-##############################
+##################################
 ##   Iterative implementation   ##  
-##############################
+##################################
 
 def V_iterative(solution_frame_2,control_units):
 
     """ CVXPY iterative implementation 
-    Approach 1: Iterating over a subset of V"""
+    Approach 1: Iterating over a subset of V
+    
+    Generates 
+    - Fig 4(a) Convergence of  RMSPE
+    - Fig 4(b) Average Constraint Violation
+    - Dataframe with optimal values and constraint violation values"""
 
     class Solution:
         def solve(self, nums):

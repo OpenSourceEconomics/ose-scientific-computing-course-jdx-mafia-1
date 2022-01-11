@@ -51,7 +51,7 @@ def plot_prep(frame_name):
     
 
 
-def mafia_presence_avg(df2):
+def fig1_mafia_presence_avg(df2):
     """ 
     Plots Figure 1: GDP per capita and mafia presence, averaged over 1983–2007
     """
@@ -74,7 +74,7 @@ def mafia_presence_avg(df2):
     
 
 
-def murder_rate_graphs(df3, df2):
+def fig2_murder_rate_graphs(df3, df2):
     """ Plots Fig 2(a): Murder rate time series plot 1956-2007
         and   Fig 2(b): Organized Crime and Murder 1983-2007 """
 
