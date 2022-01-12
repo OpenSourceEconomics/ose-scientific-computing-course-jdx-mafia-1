@@ -30,10 +30,10 @@ def basque_weights(output_object_basque,data_Basque,control_units_basque):
     display(weights_compare_basque.T.round(4))
 
 
-def reunification_weights(output_object_reunification,df,Z0_reuni,Z1_reuni):
+def reunification_weights(output_object_reunification,data_reuni,Z0_reuni,Z1_reuni):
     w_abadie = np.array([0.22, 0, 0.42, 0, 0, 0, 0, 0.09, 0, 0.11, 0.16, 0, 0, 0, 0,0]).reshape(16, 1)
     w_reunification = output_object_reunification[1]
-    control_units_reuni = df.drop(df[df.country == "West Germany"].index)
+    control_units_reuni = data_reuni.drop(data_reuni[data_reuni.country == "West Germany"].index)
 
     weights_compare_reunification = pd.DataFrame({'Country':control_units_reuni.country.unique(), 
                                         'W_Reunification_Nested': np.round(w_reunification.ravel(), decimals=3),
