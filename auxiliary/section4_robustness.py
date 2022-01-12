@@ -17,16 +17,17 @@ from scipy.optimize import differential_evolution, NonlinearConstraint, Bounds
 from auxiliary.section3_SCM import SCM
 
 
-def basque_weights(output_object_basque,x0_Basque):
+def basque_weights(output_object_basque,data_Basque,control_units_basque):
     w_nested_basque = output_object_basque[1]
+    donor_regions = list(data_Basque.loc[data_Basque.regionno.isin(control_units_basque), 'regionname'].unique())
 
-    weights_compare_basque = pd.DataFrame({'Region':x0_Basque.columns.unique(),
+    weights_compare_basque = pd.DataFrame({'Region':donor_regions,
                                         'W_Basque_Nested': np.round(w_nested_basque.ravel(), decimals=4),
                                         'W_Basque_Abadie':[0, 0, 0, 0, 0, 0, 0, 0, 0.8508, 0, 0, 0, 0.1492,0,0,0]})
 
 
    
-    display(weights_compare_basque.T)
+    display(weights_compare_basque.T.round(4))
 
 
 def reunification_weights(output_object_reunification,df,Z0_reuni,Z1_reuni):
