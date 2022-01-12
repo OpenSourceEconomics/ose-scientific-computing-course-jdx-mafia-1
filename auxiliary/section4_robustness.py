@@ -16,6 +16,35 @@ from scipy.optimize import differential_evolution, NonlinearConstraint, Bounds
 
 from auxiliary.section3_SCM import SCM
 
+def basque_weights():
+    w_nested_basque = output_object_basque[1]
+
+    weights_compare_basque = pd.DataFrame({'Region':x0_Basque.columns.unique(),
+                                        'W_Basque_Nested': np.round(w_nested_basque.ravel(), decimals=4),
+                                        'W_Basque_Abadie':[0, 0, 0, 0, 0, 0, 0, 0, 0.8508, 0, 0, 0, 0.1492,0,0,0]})
+
+
+   
+display(weights_compare_basque.T)
+
+
+def reunification_weights():
+    w_reunification = output_object_reunification[1]
+    control_units_reuni = df.drop(df[df.country == "West Germany"].index)
+
+    weights_compare_reunification = pd.DataFrame({'Country':control_units_reuni.country.unique(), 
+                                        'W_Reunification_Nested': np.round(w_reunification.ravel(), decimals=3),
+                                        'W_Reunification_Abadie':[0.22, 0, 0.42, 0, 0, 0, 0, 0.09, 0, 0.11, 0.16, 0, 0, 0, 0,0]})
+
+    def RMSPE(w,Z0,Z1):
+        return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
+    
+display(weights_compare_reunification.T)
+
+print('\nRMSPE Nested:    {} \nRMSPE Abadie:    {}'\
+      .format(np.round(RMSPE(w = w_reunification,Z0 = Z0_reuni, Z1 = Z1_reuni),5), 
+              np.round(RMSPE(w = w_abadie, Z0 = Z0_reuni,Z1 = Z1_reuni),5)))
+
 
 def numerical_instability(Z0,Z1,X0,X1,data,v_pinotti,v_becker,w_becker,w_pinotti):
     
