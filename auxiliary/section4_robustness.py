@@ -25,7 +25,7 @@ def basque_weights():
 
 
    
-display(weights_compare_basque.T)
+    display(weights_compare_basque.T)
 
 
 def reunification_weights():
@@ -39,10 +39,10 @@ def reunification_weights():
     def RMSPE(w,Z0,Z1):
         return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
     
-display(weights_compare_reunification.T)
+    display(weights_compare_reunification.T)
 
-print('\nRMSPE Nested:    {} \nRMSPE Abadie:    {}'\
-      .format(np.round(RMSPE(w = w_reunification,Z0 = Z0_reuni, Z1 = Z1_reuni),5), 
+    print('\nRMSPE Nested:    {} \nRMSPE Abadie:    {}'\
+              .format(np.round(RMSPE(w = w_reunification,Z0 = Z0_reuni, Z1 = Z1_reuni),5), 
               np.round(RMSPE(w = w_abadie, Z0 = Z0_reuni,Z1 = Z1_reuni),5)))
 
 
