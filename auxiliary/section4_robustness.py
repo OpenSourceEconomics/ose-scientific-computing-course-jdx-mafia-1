@@ -16,7 +16,8 @@ from scipy.optimize import differential_evolution, NonlinearConstraint, Bounds
 
 from auxiliary.section3_SCM import SCM
 
-def basque_weights():
+
+def basque_weights(output_object_basque,x0_Basque):
     w_nested_basque = output_object_basque[1]
 
     weights_compare_basque = pd.DataFrame({'Region':x0_Basque.columns.unique(),
@@ -28,7 +29,8 @@ def basque_weights():
     display(weights_compare_basque.T)
 
 
-def reunification_weights():
+def reunification_weights(output_object_reunification,df,Z0_reuni,Z1_reuni):
+    w_abadie = np.array([0.22, 0, 0.42, 0, 0, 0, 0, 0.09, 0, 0.11, 0.16, 0, 0, 0, 0,0]).reshape(16, 1)
     w_reunification = output_object_reunification[1]
     control_units_reuni = df.drop(df[df.country == "West Germany"].index)
 
