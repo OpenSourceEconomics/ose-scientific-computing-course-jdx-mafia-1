@@ -244,9 +244,10 @@ def V_iterative(solution_frame_2,control_units):
     plt.show()
     
     sorted_df = solution_frame_2.sort_values(by='RMSPE ECOS', ascending=True)
+    sorted_df_SCS = solution_frame_2.sort_values(by='RMSPE SCS', ascending=True)
 
     w_ECOS  = sorted_df.iloc[0][5]
-    w_SCS   = sorted_df.iloc[0][6]
+    w_SCS   = sorted_df_SCS.iloc[0][6]
     w_CPLEX = sorted_df.iloc[0][7]
     w_SLSQP = sorted_df.iloc[0][8]
 
@@ -266,8 +267,7 @@ def V_iterative(solution_frame_2,control_units):
     display(best_weights_region.T)
 
     # Organize output into dataframe
-    sorted_df = solution_frame_2.sort_values(by='RMSPE ECOS', ascending=True)
-    print("\noptimal value with SCS:  ",np.round(sorted_df.iloc[0][2],3), "| constraint violation: ", sorted_df.iloc[0][9])
+    print("\noptimal value with SCS:  ",np.round(sorted_df_SCS.iloc[0][2],3), "| constraint violation: ", sorted_df_SCS.iloc[0][9])
     print("optimal value with ECOS: ",np.round(sorted_df.iloc[0][1],3), "| constraint violation: ", sorted_df.iloc[0][10])
     print("optimal value with CPLEX:",np.round(sorted_df.iloc[0][3],3), "| constraint violation: ", sorted_df.iloc[0][11])
     print("optimal value with SLSQP:",np.round(sorted_df.iloc[0][4],3), "| constraint violation: n.a.")
@@ -415,7 +415,7 @@ def SCM_v1(data,unit_identifier,time_identifier,matching_period,treat_unit,contr
 
 
 
-def global_feasible(Z1,Z0,w_cvxopt,L1_cvxopt,control_units,data,w_becker,v_OSQP,v_GUROBI,v_CPLEX,v_ECOS,v_SCS):
+def global_feasible(Z1,Z0,w_cvxopt,L1_cvxopt,control_units,data,w_becker,v_OSQP,v_CPLEX,v_ECOS,v_SCS):
     
     def RMSPE(w):
         return np.sqrt(np.mean((Z1 - Z0 @ w)**2)) 
@@ -444,9 +444,9 @@ def global_feasible(Z1,Z0,w_cvxopt,L1_cvxopt,control_units,data,w_becker,v_OSQP,
     
     display(best_weights_importance4.T)
 
-    print('\nOSQP V* Constraint Violation:  {}  \nGUROBI V* Constraint Violation: {} \nCPLEX V* Constraint Violation: {}\
+    print('\nOSQP V* Constraint Violation:  {}  \nCPLEX V* Constraint Violation: {}\
           \nECOS V* Constraint Violation: {} \nSCS V* Constraint Violation: {}'\
-          .format(1 - sum(v_OSQP.ravel()), 1 - sum(v_GUROBI.ravel()), 1 - sum(v_CPLEX.ravel()), 
+          .format(1 - sum(v_OSQP.ravel()), 1 - sum(v_CPLEX.ravel()), 
                   1 - sum(v_ECOS.ravel()), 1 - sum(v_SCS.ravel())))
 
     
