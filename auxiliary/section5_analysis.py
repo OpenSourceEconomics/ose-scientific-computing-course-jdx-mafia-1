@@ -39,8 +39,7 @@ def dynamic_graph_2(w_becker,w_pinotti,w_nested, y_control_all, y_treat_all, dat
     fig.add_trace(go.Scatter(x=[1960], y=[12000], mode="text",
         name="Matching", text=["End of Matching<br>Period"]))
 
-    fig.update_layout(title='Fig 5: Synthetic Control Optimizer vs. Treated unit',
-                       xaxis_title='Time', yaxis_title='GDP per Capita')
+    fig.update_layout(xaxis_title='Time', yaxis_title='GDP per Capita')
     fig.show()
     
     

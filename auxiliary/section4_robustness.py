@@ -25,8 +25,6 @@ def basque_weights(output_object_basque,data_Basque,control_units_basque):
                                         'W_Basque_Nested': np.round(w_nested_basque.ravel(), decimals=4),
                                         'W_Basque_Abadie':[0, 0, 0, 0, 0, 0, 0, 0, 0.8508, 0, 0, 0, 0.1492,0,0,0]})
 
-
-   
     display(weights_compare_basque.T.round(4))
 
 

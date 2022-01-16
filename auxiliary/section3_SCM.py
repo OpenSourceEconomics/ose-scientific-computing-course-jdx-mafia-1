@@ -157,8 +157,7 @@ def fig3_dynamic_graph(w_basic, w_pinotti, w_becker, y_control_all, y_treat_all,
     fig.add_trace(go.Scatter(x=[1981], y=[12000], mode="text",
         name="Event 2", text=["Basilicata<br>Earthquake"]))
 
-    fig.update_layout(title='Fig. 3: Treated Unit vs Synthetic Controls with different region weights',
-                       xaxis_title='Time', yaxis_title='GDP per Capita')
+    fig.update_layout(xaxis_title='Time', yaxis_title='GDP per Capita')
 
     # Dynamic graph
     fig.show()
@@ -243,7 +242,7 @@ def V_iterative(solution_frame_2,control_units):
 
     plt.show()
     
-    sorted_df = solution_frame_2.sort_values(by='RMSPE ECOS', ascending=True)
+    """sorted_df = solution_frame_2.sort_values(by='RMSPE ECOS', ascending=True)
     sorted_df_SCS = solution_frame_2.sort_values(by='RMSPE SCS', ascending=True)
 
     w_ECOS  = sorted_df.iloc[0][5]
@@ -271,7 +270,7 @@ def V_iterative(solution_frame_2,control_units):
     print("optimal value with ECOS: ",np.round(sorted_df.iloc[0][1],3), "| constraint violation: ", sorted_df.iloc[0][10])
     print("optimal value with CPLEX:",np.round(sorted_df.iloc[0][3],3), "| constraint violation: ", sorted_df.iloc[0][11])
     print("optimal value with SLSQP:",np.round(sorted_df.iloc[0][4],3), "| constraint violation: n.a.")
-
+    """
     
     
 # Data Preparation Function with 8 arguments
@@ -559,25 +558,4 @@ def SCM(data,unit_identifier,time_identifier,matching_period,treat_unit,control_
     output = [solution_frame,w_nested,v_nested,RMSPE_f(w_nested)]  # [all repititions, W*, V*, RMSPE]
     
     return output
-    
-    
-# #######################################################
-# ##   CVXPY CODE, SETTINGS AND OUTPUT VISUALIZATION   ##
-# #######################################################
-
-# def settings():
-    
-#     """ sets necessary parameters for SCM function, solution_output_SCM function and graphs in section 4 """
-    
-#     unit_identifier     = 'reg'
-#     time_identifier     = 'year'
-#     matching_period     = list(range(1951, 1961))
-#     treat_unit          = 21
-#     control_units       = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20]
-#     outcome_variable    = ['gdppercap']
-#     predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
-#     reps                = 1
-#     entire_period       = list(range(1951, 2008))
-#     return unit_identifier, time_identifier, matching_period, treat_unit, control_units, outcome_variable, predictor_variables, reps, entire_period
-
     
