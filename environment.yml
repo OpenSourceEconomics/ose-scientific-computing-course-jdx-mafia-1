@@ -16,7 +16,6 @@ dependencies:
   - joblib
   - cplex
   - docplex
-  - gurobipy
   - qpsolvers
   - cvxopt
   - scs
