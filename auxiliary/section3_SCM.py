@@ -89,10 +89,10 @@ def cvxpy_basic_solution(control_units, X0, X1):
 
     print('\nObjective Value: ', objective_solution)
 
-    solution_frame_1 = pd.DataFrame({'Region':control_units.region.unique(), 
+    """solution_frame_1 = pd.DataFrame({'Region':control_units.region.unique(), 
                                'Weights': np.round(w_basic.T[0], decimals=3)})
 
-    display(solution_frame_1.transpose())
+    display(solution_frame_1.transpose())"""
     return w_basic
 
       
@@ -327,8 +327,8 @@ def SCM_print(data,output_object,w_pinotti,Z1,Z0):
                                       'Market Services VA','Non-market Services VA','Human Capital',
                                       'Population Density'])
 
-    display(best_weights_importance3.T)
-    display(best_weights_region3.T)
+    #display(best_weights_importance3.T)
+    #display(best_weights_region3.T)
 
     print('\nV* Constraint Violation: {} \nW*(V*) Constraint Violation:  {}'\
       .format(1-sum(v_nested.ravel()), abs(1-sum(w_nested.ravel()))))
