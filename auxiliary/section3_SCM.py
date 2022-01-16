@@ -89,10 +89,10 @@ def cvxpy_basic_solution(control_units, X0, X1):
 
     print('\nObjective Value: ', objective_solution)
 
-    """solution_frame_1 = pd.DataFrame({'Region':control_units.region.unique(), 
+    solution_frame_1 = pd.DataFrame({'Region':control_units.region.unique(), 
                                'Weights': np.round(w_basic.T[0], decimals=3)})
 
-    display(solution_frame_1.transpose())"""
+    display(solution_frame_1.transpose())
     return w_basic
 
       
@@ -242,7 +242,7 @@ def V_iterative(solution_frame_2,control_units):
 
     plt.show()
     
-    """sorted_df = solution_frame_2.sort_values(by='RMSPE ECOS', ascending=True)
+    sorted_df = solution_frame_2.sort_values(by='RMSPE ECOS', ascending=True)
     sorted_df_SCS = solution_frame_2.sort_values(by='RMSPE SCS', ascending=True)
 
     w_ECOS  = sorted_df.iloc[0][5]
@@ -270,7 +270,7 @@ def V_iterative(solution_frame_2,control_units):
     print("optimal value with ECOS: ",np.round(sorted_df.iloc[0][1],3), "| constraint violation: ", sorted_df.iloc[0][10])
     print("optimal value with CPLEX:",np.round(sorted_df.iloc[0][3],3), "| constraint violation: ", sorted_df.iloc[0][11])
     print("optimal value with SLSQP:",np.round(sorted_df.iloc[0][4],3), "| constraint violation: n.a.")
-    """
+    
     
     
 # Data Preparation Function with 8 arguments
@@ -327,9 +327,6 @@ def SCM_print(data,output_object,w_pinotti,Z1,Z0):
                                       'Market Services VA','Non-market Services VA','Human Capital',
                                       'Population Density'])
 
-    #display(best_weights_importance3.T)
-    #display(best_weights_region3.T)
-
     print('\nV* Constraint Violation: {} \nW*(V*) Constraint Violation:  {}'\
       .format(1-sum(v_nested.ravel()), abs(1-sum(w_nested.ravel()))))
 
@@ -338,6 +335,9 @@ def SCM_print(data,output_object,w_pinotti,Z1,Z0):
 
     print('\nRMSPE Nested:    {} \nRMSPE Pinotti:   {}'\
       .format(np.round(RMSPE(w_nested),5), np.round(RMSPE(w_pinotti),5)))
+    
+    display(best_weights_importance3.T)
+    display(best_weights_region3.T)
   
     
 def SCM_v1(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
