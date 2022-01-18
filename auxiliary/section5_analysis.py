@@ -74,35 +74,46 @@ def table_compare_2(w_nested,w_global,data,predictor_variables,w_becker,w_pinott
     display(result)
     
       
-def diff_figure_2(w_nested,control_units_all,treat_unit_all,y_control_all,y_treat_all,data):
+def diff_figure_2(w_nested,w_global,control_units_all,treat_unit_all,y_control_all,y_treat_all,data):
 #      """ Generates Fig 6: Actual vs Synthetic Differences over time: GDP per capita and Murders.
 #          Shows differences in evolution of murder rates and GDP per capita between the actual realizations of Apulia 
 #          and Basilicata and the ones predicted by the synthetic control unit """
   
     murd_treat_all      = np.array(treat_unit_all.murd).reshape(1, 57)
     murd_control_all    = np.array(control_units_all.murd).reshape(15, 57)
-    synth_murd = w_nested.T @ murd_control_all
+    synth_murd_local  = w_nested.T @ murd_control_all
+    synth_murd_global = w_global.T @ murd_control_all
 
-    synth_gdp = w_nested.T @ y_control_all
+    synth_gdp_local  = w_nested.T @ y_control_all
+    synth_gdp_global = w_global.T @ y_control_all
 
-    diff_GDP = (((y_treat_all-synth_gdp)/(synth_gdp))*100).ravel()
-    diff_murder = (murd_treat_all - synth_murd).ravel()
+    diff_GDP_local  = (((y_treat_all-synth_gdp_local)/(synth_gdp_local))*100).ravel()
+    diff_GDP_global = (((y_treat_all-synth_gdp_global)/(synth_gdp_global))*100).ravel()
 
-    diff_data_0 = pd.DataFrame({'Murder Gap':diff_murder,
-                             'GDP Gap': diff_GDP},
+    diff_murder_local  = (murd_treat_all - synth_murd_local).ravel()
+    diff_murder_global = (murd_treat_all - synth_murd_global).ravel()
+
+    diff_data_0 = pd.DataFrame({'Murder Gap':diff_murder_local,
+                             'GDP Gap': diff_GDP_local},
+                             index=data.year.unique())
+
+    diff_data_1 = pd.DataFrame({'Murder Gap':diff_murder_global,
+                             'GDP Gap': diff_GDP_global},
                              index=data.year.unique())
 
     year = diff_data_0.index.values
     fig, ax1 = plt.subplots()
     ax1.set_xlabel('Year')
     ax1.set_ylabel('GDP per capita, % Gap')
-    ax1.bar(year,diff_data_0['GDP Gap'],width = 0.5,label = 'GDP per capita')
+    ax1.bar(year,diff_data_0['GDP Gap'],width = 0.5,label = 'GDP per capita (Local)')
+    ax1.bar(year,diff_data_1['GDP Gap'],width = 0.5,label = 'GDP per capita (Global)')
     ax1.axhline(0)
     ax1.tick_params(axis='y')
 
     ax2 = ax1.twinx()
     ax2.set_ylabel('Murder Rate, Difference')
-    ax2.plot(diff_data_0['Murder Gap'],color='black',label = 'Murders')
+    ax2.plot(diff_data_0['Murder Gap'],color='black',label = 'Murders (Local)')
+    ax2.plot(diff_data_1['Murder Gap'],color='grey',label = 'Murders (Global)')
     ax2.axhline(0)
     ax2.tick_params(axis='y')
 
@@ -113,7 +124,7 @@ def diff_figure_2(w_nested,control_units_all,treat_unit_all,y_control_all,y_trea
     h2, l2 = ax2.get_legend_handles_labels()
     ax1.legend(h1+h2, l1+l2,loc = 'upper center', bbox_to_anchor = (0.5, -0.15), shadow = True, ncol = 2)
     fig.tight_layout() 
-    plt.title('Fig 6: Actual vs Synthetic Differences over time: GDP per capita and Murders')
+    plt.title('Fig 6: GDP and Murder Gaps for Local and Global Optimum')
     plt.show()
     
     return diff_data_0
