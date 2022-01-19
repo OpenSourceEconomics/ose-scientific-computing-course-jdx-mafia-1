@@ -59,8 +59,7 @@ def fig1_mafia_presence_avg(df2):
                  np.where((df2['reg'] <= 12) | (df2['reg'] == 20), 'salmon', 'none')))                   # THE REST
 
     df2.plot.scatter('mafia', 'gdppercap', c = color, s = 10, linewidth = 3, 
-                 xlabel = 'Presence of mafia organisations', ylabel = 'GDP per capita', ylim = [7000,15000], xlim = [0,2.25],
-                 title = 'Figure 1: GDP per capita and mafia presence, averaged over 1983–2007')
+                 xlabel = 'Presence of mafia organisations', ylabel = 'GDP per capita', ylim = [7000,15000], xlim = [0,2.25])
     n = ['Basilicata', 'Calabria', 'Campania', 'Apulia', 'Sicily']
     j, z = 0, [1, 2, 3, 16, 18]
     for i in z:

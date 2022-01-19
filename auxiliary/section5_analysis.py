@@ -137,7 +137,7 @@ def diff_figure_2(w_nested,w_global,control_units_all,treat_unit_all,y_control_a
     h2, l2 = ax2.get_legend_handles_labels()
     ax1.legend(h1+h2, l1+l2,loc = 'upper center', bbox_to_anchor = (0.5, -0.15), shadow = True, ncol = 2)
     fig.tight_layout() 
-    plt.title('Fig 6: GDP and Murder Gaps for Local and Global Optimum')
+    plt.title('GDP and Murder Gaps for Local and Global Optimum')
     plt.show()
     
     return diff_data_0
