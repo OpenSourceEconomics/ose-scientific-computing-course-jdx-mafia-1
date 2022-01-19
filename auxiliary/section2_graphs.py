@@ -73,8 +73,10 @@ def fig1_mafia_presence_avg(df2):
 
 
 def fig2_murder_rate_graphs(df3, df2):
-    """ Plots Fig 2(a): Murder rate time series plot 1956-2007
-        and   Fig 2(b): Organized Crime and Murder 1983-2007 """
+    """ 
+    Plots Fig 2(a): Murder rate time series plot 1956-2007
+    and   Fig 2(b): Organized Crime and Murder 1983-2007 
+    """
 
     color = np.where((df2['reg'] == 15) | (df2['reg'] == 18) | (df2['reg'] == 19), 'midnightblue',           # EXCLUDED
                      np.where((df2['reg'] == 16) | (df2['reg'] == 17), 'mediumslateblue',                    # TREATED

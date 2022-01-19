@@ -1,4 +1,4 @@
-""" Auxiliary code for section 6 of the main notebook """
+""" Auxiliary code for section 6. Robustness Checks of the main notebook """
 
 # All notebook dependencies:
 import cvxpy as cp
@@ -18,59 +18,17 @@ from auxiliary.section3_SCM import SCM
 dtafile = './dataset/Pinotti-replication/dataset.dta'
 data = pd.read_stata(dtafile)
 
+
+
+
+
+
 ########## SENSITIVITY ANALYSIS ############
-
-def gdp_murder_plotter(data,treat_unit,control_units,region_weights,title1,ax1):
-    
-    X3 = data.loc[data[time_identifier].isin(entire_period)]
-    X3.index = X3.loc[:,unit_identifier]
-    
-    murd_treat_all   = np.array(X3.loc[(X3.index == treat_unit),('murd')]).reshape(1,len(entire_period))
-    murd_control_all = np.array(X3.loc[(X3.index.isin(control_units)),('murd')]).reshape(len(control_units),len(entire_period))
-    gdp_control_all  = np.array(X3.loc[(X3.index.isin(control_units)),('gdppercap')]).reshape(len(control_units),len(entire_period))
-    gdp_treat_all    = np.array(X3.loc[(X3.index == treat_unit),('gdppercap')]).reshape(1,len(entire_period))
-    
-    synth_murd = region_weights.T @ murd_control_all
-
-    synth_gdp = region_weights.T @ gdp_control_all
-
-    diff_GDP = (((gdp_treat_all-synth_gdp)/(synth_gdp))*100).ravel()
-    diff_murder = (murd_treat_all - synth_murd).ravel()
-
-    diff_data = pd.DataFrame({'Murder Gap':diff_murder,
-                             'GDP Gap': diff_GDP},
-                             index=data.year.unique())
-
-    year = diff_data.index.values
-    ax1.bar(year,diff_data['GDP Gap'],width = 0.5,label = 'GDP per capita')
-    ax1.axhline(0)
-    ax1.title.set_text(title1)
-    ax1.tick_params(axis='y')
-
-    ax2 = ax1.twinx()
-    ax2.plot(diff_data['Murder Gap'],color='black',label = 'Murders')
-    ax2.axhline(0)
-    ax2.tick_params(axis='y')
-
-    plt.axvspan(1975, 1980, color='y', alpha=0.5, lw=0,label='Mafia Outbreak')
-    ax1.set_ylim(-31,31)
-    ax2.set_ylim(-4.5,4.5)
-
-    
-""" SETTINGS ARE THE SAME AS IN settings() FUNCTION FROM SECTION 3"""    
-unit_identifier     = 'reg'
-time_identifier     = 'year'
-matching_period     = list(range(1951, 1961))
-control_units       = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20]
-outcome_variable    = ['gdppercap']
-predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
-entire_period       = list(range(1951, 2008))
-reps                = 1
-
     
 def multiplot(SCM, data, unit_identifier, time_identifier, matching_period, treat_unit, control_units, outcome_variable, predictor_variables, reps, entire_period):
-    
-#      """ Plots multiple graphs in a 3x3 grid using settings() function from auxiliary.section2_graphs """
+      """
+      Plots Figure 7: Sensitivity of observed treatment effect to different specifications of the synthetic control
+      """
     
     # Conducting the checks: Setting and resetting initial conditions only when needed
     fig, fig_axes = plt.subplots(ncols=3, nrows=3,figsize=(10,10))
@@ -155,9 +113,17 @@ def multiplot(SCM, data, unit_identifier, time_identifier, matching_period, trea
     plt.show()
     
     
+    
+    
+    
+    
+    
 ########## PLACEBO TESTING ############
 placebo_groups =  [[1,2],[1,7],[1,3],[3,4],[3,5],[3,8],[4,5],[5,6],[5,8],[7,8],[7,9],[8,9],[8,11],
                     [9,11],[9,10],[9,12],[10,11],[10,12],[11,13],[11,12],[12,13],[12,14],[13,14]]
+
+
+
 
 
 def g(pair):
@@ -228,7 +194,18 @@ def g(pair):
     
     return diff_data
 
+
+
+
+
+
+
+
+
 def placebo_plot(g,placebo_groups,diff_data_0):
+    """
+    Generates Figure 8: Observed treatment effect for Apulia and Basilicata and placebo units
+    """
     
     diff_list = []
     diff_list = Parallel(n_jobs=-1)(delayed(g)(pair) for pair in placebo_groups)

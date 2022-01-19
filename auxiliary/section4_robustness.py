@@ -1,4 +1,4 @@
-""" Auxiliary code for section 4 of the main notebook """
+""" Auxiliary code for section 4. Robustness of our SCM Implementation of the main notebook """
 
 # All notebook dependencies:
 import cvxpy as cp
@@ -17,7 +17,15 @@ from scipy.optimize import differential_evolution, NonlinearConstraint, Bounds
 from auxiliary.section3_SCM import SCM
 
 
+
+
+
+
+
 def basque_weights(output_object_basque,data_Basque,control_units_basque):
+    """
+    Generates weights table for Basque Country application of SCM
+    """
     w_nested_basque = output_object_basque[1]
     donor_regions = list(data_Basque.loc[data_Basque.regionno.isin(control_units_basque), 'regionname'].unique())
 
@@ -27,8 +35,18 @@ def basque_weights(output_object_basque,data_Basque,control_units_basque):
 
     display(weights_compare_basque.T.round(4))
 
+    
+    
+    
+    
+    
+    
 
 def reunification_weights(output_object_reunification,data_reuni,Z0_reuni,Z1_reuni):
+    """
+    Generates weights table for West Germany reunification application of SCM
+    """
+    
     w_abadie = np.array([0.22, 0, 0.42, 0, 0, 0, 0, 0.09, 0, 0.11, 0.16, 0, 0, 0, 0,0]).reshape(16, 1)
     w_reunification = output_object_reunification[1]
     control_units_reuni = data_reuni.drop(data_reuni[data_reuni.country == "West Germany"].index)
@@ -46,8 +64,16 @@ def reunification_weights(output_object_reunification,data_reuni,Z0_reuni,Z1_reu
               .format(np.round(RMSPE(w = w_reunification,Z0 = Z0_reuni, Z1 = Z1_reuni),5), 
               np.round(RMSPE(w = w_abadie, Z0 = Z0_reuni,Z1 = Z1_reuni),5)))
 
+    
+    
+    
+    
+    
 
 def numerical_instability(Z0,Z1,X0,X1,data,v_pinotti,v_becker,w_becker,w_pinotti):
+    """
+    Generates table for the analysis of numerical instability in out implementation.
+    """
     
     def RMSPE(w):
         return np.sqrt(np.mean((Z1 - Z0 @ w)**2)) 

@@ -1,4 +1,4 @@
-""" Auxiliary code for section 5 of the main notebook """
+""" Auxiliary code for section 5. Synthetic Control Performance Analysis of the main notebook """
 
 # All notebook dependencies:
 import cvxpy as cp
@@ -16,10 +16,16 @@ from scipy.optimize import differential_evolution, NonlinearConstraint, Bounds
 
 
 
+
+
+
+
 def dynamic_graph_2(w_becker,w_pinotti,w_nested, y_control_all, y_treat_all, data):
     
-    """ Dynamic plot for Figure 5: Synthetic Control Optimizer vs. Treated unit
-         Plots iterative CVXPY, scipy, Pinotti and Becker versus treated unit outcome """
+    """
+    Dynamic plot for Figure 5: Evolution of observed GDP per capita vs. synthetic estimates across Pinotti (2015) weights and global optimum weights
+    Plots iterative CVXPY, scipy, Pinotti and Becker versus treated unit outcome
+    """
     y_synth_pinotti = w_pinotti.T @ y_control_all
     y_synth_becker = w_becker.T @ y_control_all
     y_synth_nested = w_nested.T @ y_control_all
@@ -43,8 +49,14 @@ def dynamic_graph_2(w_becker,w_pinotti,w_nested, y_control_all, y_treat_all, dat
     fig.show()
     
     
+    
+    
+    
+    
 def table_compare_2(w_nested,w_global,data,predictor_variables,w_becker,w_pinotti,X1,X0):   
-#      """ Dataframe with matching period characteristics for Apulia and Basilicata, Synthetic Control, Control Units """ 
+      """
+      Dataframe with matching period characteristics for Apulia and Basilicata, Synthetic Control, Control Units
+      """ 
         
     x_pred_nested  = (X0 @ w_nested).ravel()
     x_pred_global  = (X0 @ w_global).ravel()
@@ -63,7 +75,6 @@ def table_compare_2(w_nested,w_global,data,predictor_variables,w_becker,w_pinott
                                   'SCM/Global': x_pred_global},
                            index= data.columns[[3,16,11,12,13,14,26,28]])
                              
-    
     frames = [data_compare, control_stats]
     result = pd.concat(frames,axis=1)
     result = result.round(2)
@@ -73,11 +84,15 @@ def table_compare_2(w_nested,w_global,data,predictor_variables,w_becker,w_pinott
     print ('\nMatching Period Characteristics: Apulia and Basilicata, Synthetic Control, Control Units')
     display(result)
     
+    
+    
+    
+    
       
 def diff_figure_2(w_nested,w_global,control_units_all,treat_unit_all,y_control_all,y_treat_all,data):
-#      """ Generates Fig 6: Actual vs Synthetic Differences over time: GDP per capita and Murders.
-#          Shows differences in evolution of murder rates and GDP per capita between the actual realizations of Apulia 
-#          and Basilicata and the ones predicted by the synthetic control unit """
+      """ 
+      Generates Figure 6: Local Optimum vs. Global Optimum: Evolution of gaps between observed and synthetic estimates over time for GDP per capita and Murder Rate series
+      """
   
     murd_treat_all      = np.array(treat_unit_all.murd).reshape(1, 57)
     murd_control_all    = np.array(control_units_all.murd).reshape(15, 57)

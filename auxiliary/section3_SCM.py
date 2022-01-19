@@ -1,9 +1,10 @@
-""" Auxiliary code for section 3 of the main notebook.
+""" Auxiliary code for section 3. Application of Synthetic Control Method in the main notebook.
 
     Contents include functions for:
         - data preparation
         - dynamic graphs
-        - optimization with CVXPY and scipy 
+        - optimization with CVXPY
+        - SCM( ) application
         - dataframes for RMSPE and outputs """
 
 # All notebook dependencies:
@@ -64,11 +65,15 @@ def data_prep_1(data):
     
     return (treat_unit, treat_unit_all, control_units, control_units_all, y_treat, y_treat_all, y_control, y_control_all, Z1, Z0, X0, X1, w_pinotti, w_becker, v_pinotti, v_becker)
 
+
+
+
     
     
 def cvxpy_basic_solution(control_units, X0, X1):
-    
-    """Initial CVXPY setup: defines function to call and output a vector of weights function """
+    """
+    Initial CVXPY setup: defines function to call and output a vector of weights function 
+    """
     
     def w_optimize(v_diag,solver=cp.ECOS):
 
@@ -95,9 +100,15 @@ def cvxpy_basic_solution(control_units, X0, X1):
     display(solution_frame_1.transpose())
     return w_basic
 
+
+
+
+
       
 def data_compare_df(w_basic, X0, X1, w_pinotti):
-    """Outputs a dataframe to show predicted versus actual values of variables"""
+    """
+    Outputs a dataframe to show predicted versus actual values of variables
+    """
 
     ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
     x_pred_pinotti = (X0 @ w_pinotti)
@@ -116,15 +127,17 @@ def data_compare_df(w_basic, X0, X1, w_pinotti):
                                           'Market Services VA','Non-market Services VA','Human Capital',
                                           'Population Density'])
 
-    #print ('\nBreakdown across predictors:')
-
     display(data_compare)
 
+    
+    
+    
 
 def fig3_dynamic_graph(w_basic, w_pinotti, w_becker, y_control_all, y_treat_all, data):
+    """
+    Plots Figure 3: Evolution of observed GDP per capita vs. synthetic estimates across different donor weights
+    """
     
-    """ Plots Figure 3.1: Synthetic Control Optimizer vs. Treated unit 
-        for CVXPY initial optimizer, Pinotti, Becker and Klößner against the treated unit outcomes """
     y_synth_pinotti = w_pinotti.T @ y_control_all
     y_synth_becker = w_becker.T @ y_control_all
     y_synth_basic = w_basic.T @ y_control_all
@@ -159,19 +172,21 @@ def fig3_dynamic_graph(w_basic, w_pinotti, w_becker, y_control_all, y_treat_all,
 
     fig.update_layout(xaxis_title='Time', yaxis_title='GDP per Capita')
 
-    # Dynamic graph
     fig.show()
       
 
+        
+        
+        
+        
 def RMSPE_compare_df(Z1, Z0, w_basic, w_pinotti, w_becker):
-    
-    """ Defines function for Root Mean Squared Prediction Error (RMSPE)
-        and generates dataframe for RMSPE values comparison between CVXPY output, Pinotti, Becker """
-
-    # Function to obtain RMSPE
+    """
+    Defines function for Root Mean Squared Prediction Error (RMSPE)
+    and generates dataframe for RMSPE values comparison between CVXPY output, Pinotti, Becker
+    """
+    # Function RMSPE
     def RMSPE(w):
         return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
-    
     # Dataframe to compare RMSPE values
     RMSPE_values = [RMSPE(w_basic), RMSPE(w_pinotti), RMSPE(w_becker)]
     method = ['RMSPE CVXPY','RMSPE Pinotti','RMSPE Becker']
@@ -180,20 +195,26 @@ def RMSPE_compare_df(Z1, Z0, w_basic, w_pinotti, w_becker):
     display(RMSPE_compare)
 
 
+    
+    
+    
+    
+    
 
 ##################################
 ##   Iterative implementation   ##  
 ##################################
 
 def V_iterative(solution_frame_2,control_units):
-
-    """ CVXPY iterative implementation 
-    Approach 1: Iterating over a subset of V
+    """
+    Iterative implementation with CXPYS's SCS, ECOS, CPLEX and scipy's SLSQP packages 
     
     Generates 
-    - Fig 4(a) Convergence of  RMSPE
-    - Fig 4(b) Average Constraint Violation
-    - Dataframe with optimal values and constraint violation values"""
+    - Figure 4: Minimum RMSPEs with increasing iterations and the average violations of the sum constraint
+    - Predictors' weights
+    - Regional weights per package
+    - Optimal values and constraint violation values per package 
+    """
 
     class Solution:
         def solve(self, nums):
@@ -273,9 +294,16 @@ def V_iterative(solution_frame_2,control_units):
     
     
     
-# Data Preparation Function with 8 arguments
+
+    
+    
+    
+    
 def data_prep(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
               predictor_variables, normalize=False):
+    """
+    Prepares the data by normalizing X for section 3.3. in order to replicate Becker and Klößner (2017)
+    """
     
     X = data.loc[data[time_identifier].isin(matching_period)]
     X.index = X.loc[:,unit_identifier]
@@ -307,9 +335,17 @@ def data_prep(data,unit_identifier,time_identifier,matching_period,treat_unit,co
     
     return X0, X1, Z0, Z1
 
+
+
+
+
+
+
+
 def SCM_print(data,output_object,w_pinotti,Z1,Z0):
-    
-    # Organize output from SCM into dataframe
+    """
+    Organizes output from SCM into dataframe
+    """
     
     def RMSPE(w):
         return np.sqrt(np.mean((Z1 - Z0 @ w)**2))
@@ -338,10 +374,17 @@ def SCM_print(data,output_object,w_pinotti,Z1,Z0):
     
     display(best_weights_importance3.T)
     display(best_weights_region3.T)
-  
+
+    
+    
+    
+    
     
 def SCM_v1(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
               predictor_variables,reps=1,solver=cp.ECOS,seed=1):
+    """
+    Section 3.2.3. Approach 2: Nested Optimization
+    """
     
     X0, X1, Z0, Z1 = data_prep(data,unit_identifier,time_identifier,matching_period,treat_unit,
                                control_units,outcome_variable,predictor_variables)
@@ -414,6 +457,10 @@ def SCM_v1(data,unit_identifier,time_identifier,matching_period,treat_unit,contr
 
 
 
+
+
+
+
 def global_feasible(Z1,Z0,w_cvxopt,L1_cvxopt,control_units,data,w_becker,v_OSQP,v_CPLEX,v_ECOS,v_SCS):
     
     def RMSPE(w):
@@ -450,10 +497,17 @@ def global_feasible(Z1,Z0,w_cvxopt,L1_cvxopt,control_units,data,w_becker,v_OSQP,
 
     
 
+    
+    
+    
+    
+    
 def SCM(data,unit_identifier,time_identifier,matching_period,treat_unit,control_units,outcome_variable,
               predictor_variables,reps=1,solver=cp.ECOS,seed=1,check_global=False,normalize=False,dataprep=True,
               x0=None,x1=None,z0=None,z1=None):
-    
+    """
+    SCM( ) implementation
+    """
     def RMSPE(w):
         return np.sqrt(np.mean((Z1 - Z0 @ w)**2)) 
     
