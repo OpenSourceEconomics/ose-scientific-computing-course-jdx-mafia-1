@@ -54,10 +54,9 @@ def dynamic_graph_2(w_becker,w_pinotti,w_nested, y_control_all, y_treat_all, dat
     
     
 def table_compare_2(w_nested,w_global,data,predictor_variables,w_becker,w_pinotti,X1,X0):   
-      """
-      Dataframe with matching period characteristics for Apulia and Basilicata, Synthetic Control, Control Units
-      """ 
-        
+    """
+    Dataframe with matching period characteristics for Apulia and Basilicata, Synthetic Control, Control Units
+    """
     x_pred_nested  = (X0 @ w_nested).ravel()
     x_pred_global  = (X0 @ w_global).ravel()
     x_pred_pinotti = (X0 @ w_pinotti).ravel()
@@ -90,10 +89,9 @@ def table_compare_2(w_nested,w_global,data,predictor_variables,w_becker,w_pinott
     
       
 def diff_figure_2(w_nested,w_global,control_units_all,treat_unit_all,y_control_all,y_treat_all,data):
-      """ 
-      Generates Figure 6: Local Optimum vs. Global Optimum: Evolution of gaps between observed and synthetic estimates over time for GDP per capita and Murder Rate series
-      """
-  
+    """
+    Generates Figure 6: Local Optimum vs. Global Optimum: Evolution of gaps between observed and synthetic estimates over time for GDP per capita and Murder Rate series
+    """
     murd_treat_all      = np.array(treat_unit_all.murd).reshape(1, 57)
     murd_control_all    = np.array(control_units_all.murd).reshape(15, 57)
     synth_murd_local  = w_nested.T @ murd_control_all

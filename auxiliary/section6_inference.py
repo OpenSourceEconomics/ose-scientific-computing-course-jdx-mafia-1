@@ -26,9 +26,9 @@ data = pd.read_stata(dtafile)
 ########## SENSITIVITY ANALYSIS ############
     
 def multiplot(SCM, data, unit_identifier, time_identifier, matching_period, treat_unit, control_units, outcome_variable, predictor_variables, reps, entire_period):
-      """
-      Plots Figure 7: Sensitivity of observed treatment effect to different specifications of the synthetic control
-      """
+    """
+    Plots Figure 7: Sensitivity of observed treatment effect to different specifications of the synthetic control
+    """
     
     # Conducting the checks: Setting and resetting initial conditions only when needed
     fig, fig_axes = plt.subplots(ncols=3, nrows=3,figsize=(10,10))
