@@ -22,10 +22,6 @@ data = pd.read_stata(dtafile)
 
 def gdp_murder_plotter(data,treat_unit,control_units,region_weights,title1,ax1):
     
-#        """ Function to plot graphs in multiplot() function used below.
-#         Args info:
-#             - title1 -> string"""
-    
     X3 = data.loc[data[time_identifier].isin(entire_period)]
     X3.index = X3.loc[:,unit_identifier]
     
@@ -62,14 +58,14 @@ def gdp_murder_plotter(data,treat_unit,control_units,region_weights,title1,ax1):
 
     
 """ SETTINGS ARE THE SAME AS IN settings() FUNCTION FROM SECTION 3"""    
-unit_identifier = 'reg'
-time_identifier = 'year'
-matching_period = list(range(1951, 1961))
-control_units = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20]
-outcome_variable = ['gdppercap']
+unit_identifier     = 'reg'
+time_identifier     = 'year'
+matching_period     = list(range(1951, 1961))
+control_units       = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20]
+outcome_variable    = ['gdppercap']
 predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']
-entire_period = list(range(1951, 2008))
-reps=1
+entire_period       = list(range(1951, 2008))
+reps                = 1
 
     
 def multiplot(SCM, data, unit_identifier, time_identifier, matching_period, treat_unit, control_units, outcome_variable, predictor_variables, reps, entire_period):
@@ -85,7 +81,7 @@ def multiplot(SCM, data, unit_identifier, time_identifier, matching_period, trea
                         control_units,outcome_variable,predictor_variables,reps)
     region_weights = output_object[1].reshape(15,1)
 
-    gdp_murder_plotter(data,treat_unit,control_units,region_weights,'Fig 7(a) Only Apulia in treatment group',fig_axes[0,0])
+    gdp_murder_plotter(data,treat_unit,control_units,region_weights,'(a) Only Apulia in treatment group',fig_axes[0,0])
 
     # Only Basilicata in treatment group: Changes treat_unit to region number 17
     treat_unit = 17
@@ -128,7 +124,7 @@ def multiplot(SCM, data, unit_identifier, time_identifier, matching_period, trea
                         treat_unit,control_units,outcome_variable,predictor_variables,reps)
     region_weights = output_object[1].reshape(15,1)
 
-    gdp_murder_plotter(data,treat_unit,control_units,region_weights,'(f) Include crimes in predictors',fig_axes[1,2])
+    gdp_murder_plotter(data,treat_unit,control_units,region_weights,'(f) Include crime rates in predictors',fig_axes[1,2])
 
     # Include Electricity Consumption and Theft in predictors, remove pop density: add variables 'kwpop, theft', remove 'density'
     predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'kwpop','theft']
@@ -136,7 +132,7 @@ def multiplot(SCM, data, unit_identifier, time_identifier, matching_period, trea
                         treat_unit,control_units,outcome_variable,predictor_variables,reps)
     region_weights = output_object[1].reshape(15,1)
 
-    gdp_murder_plotter(data,treat_unit,control_units,region_weights,'(g) Electricity Consumption and Theft',fig_axes[2,0])
+    gdp_murder_plotter(data,treat_unit,control_units,region_weights,'(g) Electricity consumption and theft',fig_axes[2,0])
 
     # Match over 1951 to 1965: change matching_period from (1951,1960) to (1951, 1965)
     predictor_variables = ['gdppercap', 'invrate', 'shvain', 'shvaag', 'shvams', 'shvanms', 'shskill', 'density']

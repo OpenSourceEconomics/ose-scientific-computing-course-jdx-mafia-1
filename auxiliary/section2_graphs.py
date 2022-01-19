@@ -21,9 +21,7 @@ data = pd.read_stata(dtafile)
 
 def plot_prep(frame_name):
     """ 
-    Defines necesary dataframes for future plots.
-    Args:
-        frame_name -> string 
+    Defines necessary dataframes for future plots. 
     Example: data("df2") generates necessary dataframe for figure 2.1
     """
     
@@ -85,7 +83,6 @@ def fig2_murder_rate_graphs(df3, df2):
     figure, axes = plt.subplots(1, 2,figsize=(10,5))
 
     ### Figure 2(a) ###
-
     ax1 = df3.plot(colormap = 'seismic', rot = 'vertical',
                xticks   = [1956,1960,1965,1970,1975,1980,1985,1990,1995,2000,2005,2010],
                yticks   = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9],
@@ -94,7 +91,6 @@ def fig2_murder_rate_graphs(df3, df2):
     ax1.legend(loc = 'upper center', bbox_to_anchor = (0.5, -0.22), shadow = True, ncol = 2)
 
     ### Figure 2(b) ###
-
     ax2 = df2.plot.scatter('mafia', 'murd', c = color, s = 10, linewidth = 3, 
                        xlabel = 'Mafia Allegations ex Art. 416-bis × 100,000 Inhabitants', 
                        ylabel = 'Homicides x 100,000 Inhabitants', 
