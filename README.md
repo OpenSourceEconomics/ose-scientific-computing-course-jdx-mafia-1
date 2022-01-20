@@ -40,5 +40,5 @@ The [auxiliary](https://github.com/OpenSourceEconomics/ose-scientific-computing-
 
 ## Main references
 The replication project rests on the following two papers:
-- Pinotti, Paolo. [The Economic Costs of Organised Crime: Evidence from Southern Italy](https://onlinelibrary.wiley.com/doi/abs/10.1111/ecoj.12235). Bank of Italy (2011)
-- Becker, Martin, and Stefan Klößner. [Estimating the economic costs of organized crime by synthetic control methods](https://onlinelibrary.wiley.com/doi/abs/10.1002/jae.2572). Journal of Applied Econometrics 32.7 (2017): 1367-1369. <br>
+- Pinotti, Paolo. [The Economic Costs of Organised Crime: Evidence from Southern Italy](https://onlinelibrary.wiley.com/doi/abs/10.1111/ecoj.12235). The Economic Journal 125.586 (2015): F203-F232.
+- Becker, Martin, and Stefan Klößner. [Estimating the economic costs of organized crime by synthetic control methods](https://onlinelibrary.wiley.com/doi/abs/10.1002/jae.2572). Journal of Applied Econometrics 32.7 (2017): 1367-1369.
