@@ -1,4 +1,7 @@
-# What's going on in here?
-The material in this folder is the orignal replication material provided by Paolo Pinotti himself.
+# Dataset folder
 
-Follow this [link](https://onlinelibrary.wiley.com/action/downloadSupplement?doi=10.1111%2Fecoj.12235&file=ecoj12235-sup-0002-DataS1.zip) to download the original material on your device. 
+This folder contains the datasets used in Replication notebook and detailed below.
+
+- Pinotti (2015) dataset and replication material.
+- Abadie and Gardeazabal (2003) Basque Country dataset.
+- Abadie, Diamond and Hainmueller (2015) West Germany reunification dataset.
