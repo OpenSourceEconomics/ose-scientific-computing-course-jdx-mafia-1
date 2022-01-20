@@ -244,7 +244,7 @@ def V_iterative(solution_frame_2,control_units):
     ax1.plot(SLSQP_min,label = 'SLSQP')
     ax1.set_xlabel('Iterations')
     ax1.set_ylabel('Value of Outer Objective Function')
-    ax1.set_ylim(129.75,133)  
+    ax1.set_ylim(129.5,133)  
 
     ax1.title.set_text('Fig 4(a) Convergence of  RMSPE')
     ax1.legend(loc = 'upper center', bbox_to_anchor = (0.5, -0.13), shadow = True, ncol = 4)
