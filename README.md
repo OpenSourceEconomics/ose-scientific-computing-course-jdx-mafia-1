@@ -7,7 +7,7 @@
   src="https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.png" 
       width="109" height="20"> 
 </a> 
-<a href="https://gesis.mybinder.org/binder/v2/gh/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/a6cb872643c20627485147e7bd60bc99b00a59f3?urlpath=lab%2Ftree%2FReplication%20notebook.ipynb"
+<a href="https://mybinder.org/v2/gh/OpenSourceEconomics/ose-scientific-computing-course-jdx-mafia-1/a8509d87afa69991dee6abd4342ff626e0e48af5?urlpath=lab%2Ftree%2FReplication%20notebook.ipynb"
     target="_parent">
     <img align="center"
        src="https://mybinder.org/badge_logo.svg"
